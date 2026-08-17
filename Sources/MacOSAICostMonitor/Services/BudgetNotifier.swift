@@ -1,6 +1,6 @@
 import Foundation
 #if canImport(UserNotifications)
-import UserNotifications
+@preconcurrency import UserNotifications
 #endif
 
 public enum BudgetNotifier {
@@ -17,8 +17,7 @@ public enum BudgetNotifier {
             return
         }
 
-        let center = UNUserNotificationCenter.current()
-        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
             guard granted else { return }
             let content = UNMutableNotificationContent()
             content.title = "AI Cost Monitor"
@@ -28,7 +27,7 @@ public enum BudgetNotifier {
                 content: content,
                 trigger: nil
             )
-            center.add(request, withCompletionHandler: nil)
+            UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
         }
         #endif
     }
