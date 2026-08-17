@@ -96,7 +96,7 @@ cat > "$DIST_DIR/RELEASE_NOTES.md" <<NOTE
 3. On first launch, macOS may show an unidentified-developer warning because this preview is ad-hoc signed. Control-click the app, choose **Open**, and confirm. If needed, use **System Settings → Privacy & Security → Open Anyway**.
 4. Open Settings → Provider and add an OpenRouter management key.
 
-The ZIP contains the same universal app. `SHA256SUMS.txt` contains SHA-256 checksums for both installers.
+The ZIP contains the same universal app. \`SHA256SUMS.txt\` contains SHA-256 checksums for both installers.
 
 ## Requirements
 
@@ -110,7 +110,7 @@ The management key is stored in macOS Keychain. It is not included in the app, D
 
 ## Distribution note
 
-This is an unsigned/notarization-free public preview. A future Developer ID + notarized release will remove the first-launch Gatekeeper step.
+This public preview is ad-hoc signed and not notarized. A future Developer ID + notarized release will remove the first-launch Gatekeeper step.
 NOTE
 
 printf 'Created release artifacts:\n'
