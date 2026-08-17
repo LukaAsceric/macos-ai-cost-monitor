@@ -180,7 +180,7 @@ private struct ReportingSettingsSection: View {
     var body: some View {
         SettingsSection(title: "Reporting", subtitle: "Control the range, cadence, precision, and diagnostic detail.") {
             SettingsCard(title: "Time range") {
-                ForEach(ReportTimeRange.Group.allCases, id: \.self) { group in
+                ForEach(Array(ReportTimeRange.Group.allCases), id: \.rawValue) { group in
                     Text(group.title)
                         .font(.subheadline.weight(.medium))
                         .padding(.top, group == .relative ? 0 : 8)
