@@ -180,11 +180,12 @@ private struct ReportingSettingsSection: View {
     var body: some View {
         SettingsSection(title: "Reporting", subtitle: "Control the range, cadence, precision, and diagnostic detail.") {
             SettingsCard(title: "Time range") {
-                ForEach(Array(ReportTimeRange.Group.allCases), id: \.rawValue) { group in
+                ForEach(0..<ReportTimeRange.Group.allCases.count, id: \.self) { groupIndex in
+                    let group = ReportTimeRange.Group.allCases[groupIndex]
                     Text(group.title)
                         .font(.subheadline.weight(.medium))
                         .padding(.top, group == .relative ? 0 : 8)
-                    ForEach(ReportTimeRange.options(in: group)) { range in
+                    ForEach(ReportTimeRange.options(in: group), id: \.rawValue) { range in
                         HStack {
                             Text(range.badge)
                                 .font(.caption2.monospacedDigit())
