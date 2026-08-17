@@ -5,7 +5,7 @@
     <key>CFBundleDisplayName</key>
     <string>AI Cost Monitor</string>
     <key>CFBundleIdentifier</key>
-    <string>com.example.MacOSAICostMonitor</string>
+    <string>com.lukaasceric.AICostMonitor</string>
     <key>CFBundleName</key>
     <string>MacOSAICostMonitor</string>
     <key>CFBundleExecutable</key>

@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Swift tests
+    runs-on: macos-14
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Run tests
+        run: swift test
+
+      - name: Validate release scripts and plist
+        run: |
+          bash -n Scripts/build-app.sh
+          bash -n Scripts/package-release.sh
+          plutil -lint Resources/Info.plist
+
+      - name: Scan tracked source for credential-shaped values
+        run: |
+          if git grep -n -I -E 'sk-or-v1-[A-Za-z0-9_-]{12,}|ghp_[A-Za-z0-9]{20,}|Bearer [A-Za-z0-9._-]{20,}' -- ':!*.md' ':!Tests/*'; then
+            echo "Credential-shaped value found in tracked source"
+            exit 1
+          fi
+        shell: bash

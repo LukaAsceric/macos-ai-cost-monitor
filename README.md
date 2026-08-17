@@ -74,6 +74,12 @@ Not included, and documented in Settings → Release:
 - Xcode Command Line Tools or Xcode
 - An OpenRouter management API key with analytics/activity access
 
+## Install a release
+
+Download the latest **DMG** from the repository's [Releases](https://github.com/LukaAsceric/macos-ai-cost-monitor/releases) page, open it, and drag **MacOSAICostMonitor.app** to Applications.
+
+This public preview is ad-hoc signed and not notarized. On first launch, Control-click the app and choose **Open**. If macOS still blocks it, use **System Settings → Privacy & Security → Open Anyway**. Verify the downloaded DMG or ZIP with `SHA256SUMS.txt` when desired.
+
 ## Build and run
 
 ```bash
