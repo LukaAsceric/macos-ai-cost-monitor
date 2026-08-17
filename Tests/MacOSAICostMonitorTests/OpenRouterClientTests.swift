@@ -14,7 +14,7 @@ final class OpenRouterClientTests: XCTestCase {
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertEqual(request.url?.path, "/api/v1/analytics/query")
             XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer test-management-key")
-            let body = try JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any]
+            let body = try JSONSerialization.jsonObject(with: requestBodyData(request)) as? [String: Any]
             XCTAssertEqual(body?["granularity"] as? String, "hour")
             XCTAssertEqual((body?["metrics"] as? [String])?.contains("total_usage"), true)
             let range = body?["time_range"] as? [String: String]

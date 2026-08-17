@@ -172,6 +172,27 @@ fileprivate extension NSLock {
     }
 }
 
+func requestBodyData(_ request: URLRequest) -> Data {
+    if let body = request.httpBody {
+        return body
+    }
+    guard let stream = request.httpBodyStream else {
+        return Data()
+    }
+
+    stream.open()
+    defer { stream.close() }
+
+    var result = Data()
+    var buffer = [UInt8](repeating: 0, count: 4096)
+    while stream.hasBytesAvailable {
+        let count = stream.read(&buffer, maxLength: buffer.count)
+        guard count > 0 else { break }
+        result.append(buffer, count: count)
+    }
+    return result
+}
+
 func makeTestSession() -> URLSession {
     let configuration = URLSessionConfiguration.ephemeral
     configuration.protocolClasses = [TestURLProtocol.self]

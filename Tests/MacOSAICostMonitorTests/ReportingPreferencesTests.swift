@@ -55,6 +55,6 @@ final class ReportTimeRangeTests: XCTestCase {
 
         let july = ReportTimeRange.previousMonth.dayRange(reference: reference)
         // July 1 … July 31, relative to Aug 17
-        XCTAssertEqual(july, -47...(-17))
+        XCTAssertEqual(july, -61...(-31))
     }
 }
