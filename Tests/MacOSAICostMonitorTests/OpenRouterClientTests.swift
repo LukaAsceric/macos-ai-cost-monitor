@@ -46,6 +46,7 @@ final class OpenRouterClientTests: XCTestCase {
         XCTAssertTrue(result.isEmpty)
     }
 
+    @MainActor
     func test_rawResponseCaptureLogsBodyWithoutAuthorizationHeader() async throws {
         let logs = AppLogStore()
         let body = "{\"data\":[],\"diagnostic\":\"visible\"}"
@@ -63,6 +64,7 @@ final class OpenRouterClientTests: XCTestCase {
         XCTAssertFalse(text.contains("test-key"))
     }
 
+    @MainActor
     func test_rawResponseCaptureIsOptIn() async throws {
         let logs = AppLogStore()
         TestURLProtocol.requestHandler = { request in
