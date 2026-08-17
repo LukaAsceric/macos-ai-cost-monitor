@@ -3,6 +3,24 @@ import XCTest
 @testable import MacOSAICostMonitor
 
 final class CostMonitorModelTests: XCTestCase {
+    @MainActor
+    func test_refreshLogsSanitizedDiagnosticSummary() async {
+        let logs = AppLogStore()
+        let model = CostMonitorModel(
+            provider: FakeUsageProvider(items: []),
+            secretStore: InMemorySecretStore(value: "test-key"),
+            cache: InMemoryCostCache(),
+            dateProvider: FixedUTCDateProvider(date: "2026-08-17"),
+            logStore: logs
+        )
+
+        await model.refresh()
+
+        XCTAssertTrue(logs.entries.contains { $0.message == "Fetching OpenRouter activity window" })
+        XCTAssertTrue(logs.entries.contains { $0.message.contains("Received 0 activity rows") })
+        XCTAssertFalse(logs.text().contains("test-key"))
+    }
+
     func test_refreshReadsSecretFromKeychainOnlyOncePerModelLifetime() async {
         let secretStore = CountingSecretStore(value: "test-key")
         let item = ActivityItem(

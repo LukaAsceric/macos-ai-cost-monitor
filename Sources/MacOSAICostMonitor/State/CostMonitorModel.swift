@@ -71,6 +71,7 @@ public final class CostMonitorModel: ObservableObject {
     private let dateProvider: any UTCDateProviding
     private let now: @Sendable () -> Date
     public let preferences: ReportingPreferences
+    public let logStore: AppLogStore
     private var refreshTask: Task<Bool, Never>?
     private var schedulerTask: Task<Void, Never>?
     private var managementKey: String?
@@ -83,7 +84,8 @@ public final class CostMonitorModel: ObservableObject {
         cache: any CostCache,
         dateProvider: any UTCDateProviding = SystemUTCDateProvider(),
         now: @escaping @Sendable () -> Date = { Date() },
-        preferences: ReportingPreferences = ReportingPreferences()
+        preferences: ReportingPreferences = ReportingPreferences(),
+        logStore: AppLogStore = AppLogStore()
     ) {
         self.provider = provider
         self.secretStore = secretStore
@@ -91,6 +93,8 @@ public final class CostMonitorModel: ObservableObject {
         self.dateProvider = dateProvider
         self.now = now
         self.preferences = preferences
+        self.logStore = logStore
+        logStore.info("Monitor initialized")
 
         if let cached = cache.load() {
             lastUpdated = cached.fetchedAt
@@ -107,6 +111,7 @@ public final class CostMonitorModel: ObservableObject {
         if let refreshTask {
             return await refreshTask.value
         }
+        logStore.debug("Refresh requested")
         let task = Task { @MainActor [weak self] in
             await self?.performRefresh() ?? false
         }
@@ -166,14 +171,18 @@ public final class CostMonitorModel: ObservableObject {
     private func performRefresh() async -> Bool {
         let previous = state.dailyCost
         if !didLoadManagementKey {
+            logStore.debug("Reading management key from Keychain")
             do {
                 managementKey = try secretStore.read()
                 didLoadManagementKey = true
                 managementKeyErrorMessage = nil
+                logStore.info(managementKey == nil ? "No management key configured" : "Management key loaded")
             } catch let error as KeychainStoreError {
                 managementKeyErrorMessage = error.userMessage
+                logStore.error("Keychain read failed: \(error.userMessage)")
             } catch {
                 managementKeyErrorMessage = "The OpenRouter key could not be read from Keychain."
+                logStore.error("Keychain read failed")
             }
         }
 
@@ -188,8 +197,10 @@ public final class CostMonitorModel: ObservableObject {
         }
 
         state = .loading(previous: previous)
+        logStore.info("Fetching OpenRouter activity window")
         do {
             let items = try await provider.recentActivity(apiKey: key)
+            logStore.info("Received \(items.count) activity rows")
             let date = items.map(\.date).max() ?? dateProvider.currentDateString()
             let matchingItems: [ActivityItem]
             switch preferences.reportRange {
@@ -202,6 +213,7 @@ public final class CostMonitorModel: ObservableObject {
             let cost = preferences.reportRange == .last30Days
                 ? ActivityAggregator.aggregateAll(matchingItems, reportDate: reportDate)
                 : ActivityAggregator.aggregate(matchingItems, for: reportDate)
+            logStore.info("Report \(reportDate): \(cost.requests) requests, \(cost.promptTokens + cost.completionTokens + cost.reasoningTokens) tokens")
             let fetchedAt = now()
             lastUpdated = fetchedAt
 
@@ -209,8 +221,10 @@ public final class CostMonitorModel: ObservableObject {
                 state = .noData(date: reportDate, fetchedAt: fetchedAt, previous: previous)
                 do {
                     try cache.save(CachedUsage(cost: cost, fetchedAt: fetchedAt, hasActivity: false, previousCost: previous))
+                    logStore.debug("Cached no-data result")
                 } catch {
                     // A cache failure must not hide a valid no-data response.
+                    logStore.warning("Cache write failed for no-data result")
                 }
                 return true
             }
@@ -219,16 +233,20 @@ public final class CostMonitorModel: ObservableObject {
             state = .loaded(cost, fetchedAt: fetchedAt, stale: false)
             do {
                 try cache.save(CachedUsage(cost: cost, fetchedAt: fetchedAt, hasActivity: true))
+                logStore.debug("Cached live result")
             } catch {
                 // The next scheduled refresh can try persistence again.
+                logStore.warning("Cache write failed for live result")
             }
             return true
         } catch is CancellationError {
             return false
         } catch let error as OpenRouterClientError {
+            logStore.error("OpenRouter request failed: \(error.userMessage)")
             state = .failed(message: error.userMessage, previous: previous, staleSince: lastUpdated ?? now())
             return false
         } catch {
+            logStore.error("OpenRouter request failed: network or decoding error")
             state = .failed(
                 message: "OpenRouter could not be reached. Showing the last known value.",
                 previous: previous,

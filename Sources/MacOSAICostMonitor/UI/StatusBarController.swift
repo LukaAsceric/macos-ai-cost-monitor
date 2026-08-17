@@ -5,6 +5,7 @@ import SwiftUI
 @MainActor
 public final class StatusBarController: NSObject {
     private let model: CostMonitorModel
+    private weak var appDelegate: AppDelegate?
     private let statusItem: NSStatusItem
     private let popover = NSPopover()
     private var stateSubscription: AnyCancellable?
@@ -12,8 +13,9 @@ public final class StatusBarController: NSObject {
     private var globalMouseMonitor: Any?
     private var localMouseMonitor: Any?
 
-    public init(model: CostMonitorModel) {
+    public init(model: CostMonitorModel, appDelegate: AppDelegate? = nil) {
         self.model = model
+        self.appDelegate = appDelegate
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
 
@@ -53,7 +55,10 @@ public final class StatusBarController: NSObject {
         if popover.isShown {
             closePopover()
         } else {
-            let view = DashboardView(model: model) { NSApp.terminate(nil) }
+            let view = DashboardView(model: model, onSettings: { [weak self] in
+                self?.closePopover()
+                self?.appDelegate?.showSettings()
+            }) { NSApp.terminate(nil) }
             popover.contentViewController = NSHostingController(rootView: view)
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         }

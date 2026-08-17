@@ -127,8 +127,8 @@ final class OpenRouterClientTests: XCTestCase {
             _ = try await client.activity(for: "2026-08-17", apiKey: "test-key")
             XCTFail("Expected invalid request error")
         } catch let error as OpenRouterClientError {
-            XCTAssertEqual(error, .invalidRequest(message: "Date is not available"))
-            XCTAssertTrue(error.userMessage.contains("Date is not available"))
+            XCTAssertEqual(error, .invalidRequest(message: nil))
+            XCTAssertTrue(error.userMessage.contains("Check the requested date"))
         } catch {
             XCTFail("Unexpected error: \(error)")
         }

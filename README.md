@@ -62,6 +62,17 @@ The app reads the management key once per launch and keeps it only in memory for
 
 The key is stored in the macOS Keychain. It is not written to UserDefaults, the usage cache, logs, or the application bundle.
 
+## Standalone settings and diagnostics
+
+The menu-bar popover remains a compact dashboard. Open **Settings…** from the application menu or select **Settings** in the popover to open a retained, resizable settings window. It contains:
+
+- **General**: provider, time-basis, cache, and diagnostic behavior.
+- **OpenRouter**: save or delete the management key securely.
+- **Reporting**: range, refresh interval, decimal precision, and BYOK headline behavior.
+- **Console**: a searchable, level-filtered live diagnostic stream with Copy and Clear actions.
+
+The Console is deliberately metadata-only. It records refresh lifecycle, row counts, selected report ranges, aggregate request/token counts, cache outcomes, and sanitized error messages. It never records management keys, bearer tokens, authorization headers, response bodies, or full secret-bearing URLs. The in-memory console is capped at 500 entries and is not persisted to disk.
+
 ## Setup
 
 1. Create a management key in OpenRouter Settings → Management Keys.

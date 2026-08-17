@@ -20,10 +20,7 @@ public enum OpenRouterClientError: Error, Equatable, Sendable {
             return "OpenRouter rate-limited the refresh. Retrying later."
         case .server:
             return "OpenRouter is temporarily unavailable. Showing the last known value."
-        case .invalidRequest(let message):
-            if let message, !message.isEmpty {
-                return "OpenRouter rejected the request: \(message)"
-            }
+        case .invalidRequest(_):
             return "OpenRouter rejected the request. Check the requested date and management-key permissions."
         case .invalidResponse, .decoding:
             return "OpenRouter returned an unexpected response."
@@ -81,7 +78,7 @@ public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
             case 429:
                 throw OpenRouterClientError.rateLimited
             case 400:
-                throw OpenRouterClientError.invalidRequest(message: Self.extractErrorMessage(from: data))
+                throw OpenRouterClientError.invalidRequest(message: nil)
             case 500...599:
                 throw OpenRouterClientError.server(statusCode: httpResponse.statusCode)
             default:
@@ -110,12 +107,6 @@ public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
     }
 
     private static func extractErrorMessage(from data: Data) -> String? {
-        struct ErrorEnvelope: Decodable {
-            struct APIError: Decodable {
-                let message: String?
-            }
-            let error: APIError?
-        }
-        return try? JSONDecoder().decode(ErrorEnvelope.self, from: data).error?.message
+        nil
     }
 }

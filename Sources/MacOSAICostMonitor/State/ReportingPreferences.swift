@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-public enum ReportRange: String, CaseIterable, Codable, Sendable, Identifiable {
+public enum ReportRange: String, CaseIterable, Codable, Sendable, Identifiable, Hashable {
     case latestAvailableDay
     case last30Days
 

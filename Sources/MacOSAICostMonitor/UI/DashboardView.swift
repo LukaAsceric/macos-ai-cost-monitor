@@ -4,12 +4,13 @@ import SwiftUI
 public struct DashboardView: View {
     @ObservedObject private var model: CostMonitorModel
     @ObservedObject private var preferences: ReportingPreferences
+    private let onSettings: () -> Void
     private let onQuit: () -> Void
-    @State private var showSettings = false
 
-    public init(model: CostMonitorModel, onQuit: @escaping () -> Void) {
+    public init(model: CostMonitorModel, onSettings: @escaping () -> Void, onQuit: @escaping () -> Void) {
         self.model = model
         self.preferences = model.preferences
+        self.onSettings = onSettings
         self.onQuit = onQuit
     }
 
@@ -22,9 +23,6 @@ public struct DashboardView: View {
         }
         .padding(16)
         .frame(width: 390)
-        .sheet(isPresented: $showSettings) {
-            SettingsView(model: model)
-        }
     }
 
     private var header: some View {
@@ -172,7 +170,7 @@ public struct DashboardView: View {
             }
             .disabled(isRefreshing)
             Spacer()
-            Button("Settings") { showSettings = true }
+            Button("Settings") { onSettings() }
             Button("Quit") { onQuit() }
         }
         .buttonStyle(.borderless)
