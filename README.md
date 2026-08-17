@@ -14,7 +14,7 @@ The OpenRouter activity API is:
 GET https://openrouter.ai/api/v1/activity?date=YYYY-MM-DD
 ```
 
-It requires an OpenRouter **management API key** with activity access and exposes the last 30 completed UTC days. The API may not publish in-progress activity for the current date, so the application explicitly shows an unavailable/no-data state rather than silently substituting yesterday's value. Exact real-time local-day totals require request instrumentation or a future event-level API and are not claimed by this MVP.
+It requires an OpenRouter **management API key** with activity access and exposes the last 30 completed UTC days. The application requests the latest completed UTC day rather than the in-progress day, because OpenRouter may reject or omit current-day activity. Exact real-time local-day totals require request instrumentation or a future event-level API and are not claimed by this MVP.
 
 The headline total sums each activity row's `usage` field. `byok_usage_inference` is retained as a separate estimated BYOK amount and is not added to the headline total.
 
@@ -49,7 +49,7 @@ The key is stored in the macOS Keychain. It is not written to UserDefaults, the 
 4. Open Settings from the menu-bar popover and paste the key into the secure field.
 5. Save, then use **Refresh now**.
 
-A regular inference key is not sufficient for the activity endpoint. If the current date has no published data, the application reports that state and keeps the date labeled UTC.
+A regular inference key is not sufficient for the activity endpoint. If the requested completed UTC day has no published data, the application reports that state and keeps the date labeled UTC.
 
 ## Troubleshooting
 
@@ -57,7 +57,7 @@ A regular inference key is not sufficient for the activity endpoint. If the curr
 - **403:** the key lacks management/activity permission.
 - **429:** OpenRouter rate-limited the request; the app will retry on its normal schedule.
 - **Network failure:** the last successful value may remain visible but is marked stale.
-- **No current-day data:** OpenRouter has not published activity for that UTC day yet.
+- **No completed-day data:** OpenRouter has not published activity for the requested completed UTC day yet.
 
 ## Development note
 

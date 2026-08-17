@@ -3,6 +3,12 @@ import XCTest
 @testable import MacOSAICostMonitor
 
 final class CostMonitorModelTests: XCTestCase {
+    func test_systemDateProviderRequestsLatestCompletedUtcDate() {
+        let provider = SystemUTCDateProvider(now: { Date(timeIntervalSince1970: 86_400) })
+
+        XCTAssertEqual(provider.currentDateString(), "1970-01-01")
+    }
+
     func test_missingKeyStartsInSetupState() async {
         let model = await MainActor.run {
             CostMonitorModel(

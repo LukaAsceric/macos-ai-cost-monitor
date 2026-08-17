@@ -27,7 +27,7 @@ public enum MonitorState: Sendable, Equatable {
         case .loaded(_, _, let stale):
             return stale ? "Showing a stale value." : nil
         case .noData(_, _, _):
-            return "OpenRouter has not published activity for this UTC day yet."
+            return "OpenRouter has not published activity for this completed UTC day yet."
         case .failed(let message, _, _):
             return message
         }
@@ -38,16 +38,25 @@ public protocol UTCDateProviding: Sendable {
     func currentDateString() -> String
 }
 
+/// Supplies the latest completed UTC calendar day because OpenRouter's activity
+/// endpoint does not guarantee data for the in-progress UTC day.
 public struct SystemUTCDateProvider: UTCDateProviding {
-    public init() {}
+    private let now: @Sendable () -> Date
+
+    public init(now: @escaping @Sendable () -> Date = { Date() }) {
+        self.now = now
+    }
 
     public func currentDateString() -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let completedDate = calendar.date(byAdding: .day, value: -1, to: now()) ?? now()
         let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.calendar = calendar
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.timeZone = calendar.timeZone
         formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: Date())
+        return formatter.string(from: completedDate)
     }
 }
 

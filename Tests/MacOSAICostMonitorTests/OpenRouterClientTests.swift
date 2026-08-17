@@ -99,6 +99,24 @@ final class OpenRouterClientTests: XCTestCase {
         }
     }
 
+    func test_mapsBadRequestToActionableError() async {
+        let body = "{\"error\":{\"code\":400,\"message\":\"Date is not available\"}}"
+        TestURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: try XCTUnwrap(request.url), statusCode: 400, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
+        }
+        let client = OpenRouterClient(session: makeTestSession())
+
+        do {
+            _ = try await client.activity(for: "2026-08-17", apiKey: "test-key")
+            XCTFail("Expected invalid request error")
+        } catch let error as OpenRouterClientError {
+            XCTAssertEqual(error, .invalidRequest(message: "Date is not available"))
+            XCTAssertTrue(error.userMessage.contains("Date is not available"))
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     func test_mapsTransportFailure() async {
         TestURLProtocol.requestHandler = { _ in throw URLError(.notConnectedToInternet) }
         let client = OpenRouterClient(session: makeTestSession())
