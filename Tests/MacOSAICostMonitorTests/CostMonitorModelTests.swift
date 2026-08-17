@@ -16,8 +16,8 @@ final class CostMonitorModelTests: XCTestCase {
 
         await model.refresh()
 
-        XCTAssertTrue(logs.entries.contains { $0.message == "Fetching OpenRouter activity window" })
-        XCTAssertTrue(logs.entries.contains { $0.message.contains("Received 0 activity rows") })
+        XCTAssertTrue(logs.entries.contains { $0.message == "Querying OpenRouter analytics" })
+        XCTAssertTrue(logs.entries.contains { $0.message.contains("Received 0 analytics rows") })
         XCTAssertFalse(logs.text().contains("test-key"))
     }
 
@@ -131,7 +131,7 @@ final class CostMonitorModelTests: XCTestCase {
         await model.refresh()
 
         let state = await MainActor.run { model.state }
-        XCTAssertEqual(state, .noData(date: "2026-08-17", fetchedAt: Date(timeIntervalSince1970: 456), previous: nil))
+        XCTAssertEqual(state, .noData(date: "Latest completed UTC day", fetchedAt: Date(timeIntervalSince1970: 456), previous: nil))
     }
 
     func test_noDataPreservesPreviousValue() async {

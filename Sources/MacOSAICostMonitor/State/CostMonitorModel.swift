@@ -64,6 +64,9 @@ public struct SystemUTCDateProvider: UTCDateProviding {
 public final class CostMonitorModel: ObservableObject {
     @Published public private(set) var state: MonitorState = .notConfigured
     @Published public private(set) var lastUpdated: Date?
+    @Published public private(set) var series: [CostSeriesPoint] = []
+    @Published public private(set) var budgetExceeded = false
+    @Published public private(set) var lastLogExportURL: URL?
 
     private let provider: any UsageProvider
     private let secretStore: any SecretStore
@@ -192,53 +195,48 @@ public final class CostMonitorModel: ObservableObject {
         }
 
         state = .loading(previous: previous)
-        logStore.info("Fetching OpenRouter activity window")
+        logStore.info("Querying OpenRouter analytics")
         do {
-            let items = try await provider.recentActivity(apiKey: key, captureRawResponse: preferences.captureRawHTTPResponses)
-            logStore.info("Received \(items.count) activity rows")
-            let latestDate = items.map(\.date).max() ?? dateProvider.currentDateString()
-            let date = latestDate
-            let selectedRange = preferences.timeRange
-            let referenceDate = Self.utcDate(from: date) ?? Date()
-            let range = selectedRange.dayRange(reference: referenceDate)
-            let matchingItems: [ActivityItem]
-            if selectedRange == .latestAvailableDay {
-                matchingItems = items.filter { $0.date == date }
-            } else {
-                let referenceOffset = Self.utcDayOffset(from: referenceDate)
-                matchingItems = items.filter {
-                    guard let itemDate = Self.utcDate(from: $0.date) else { return false }
-                    let offset = Self.utcDayOffset(from: itemDate) - referenceOffset
-                    return offset <= range.upperBound && offset >= range.lowerBound
-                }
+            let query = AnalyticsQuery.make(
+                range: preferences.timeRange,
+                now: now(),
+                timeZone: preferences.displayTimeZone,
+                customStart: preferences.customStart,
+                customEnd: preferences.customEnd
+            )
+            logStore.info("Analytics \(preferences.timeRange.title) \(query.granularity.rawValue) \(query.timeRange.start) → \(query.timeRange.end)")
+            let result = try await provider.queryAnalytics(
+                query,
+                apiKey: key,
+                captureRawResponse: preferences.captureRawHTTPResponses
+            )
+            logStore.info("Received \(result.rows.count) analytics rows")
+            let reportDate = preferences.timeRange.reportLabel
+            let cost = result.dailyCost(label: reportDate)
+            series = result.series
+            if result.truncated {
+                logStore.warning("Analytics result was truncated; totals may be incomplete")
             }
-            let reportDate = selectedRange == .latestAvailableDay ? date : selectedRange.reportLabel
-            let cost = selectedRange == .latestAvailableDay
-                ? ActivityAggregator.aggregate(matchingItems, for: reportDate)
-                : ActivityAggregator.aggregateAll(matchingItems, reportDate: reportDate)
-            logStore.info("Report \(reportDate): \(cost.requests) requests, \(cost.promptTokens + cost.completionTokens + cost.reasoningTokens) tokens")
             let fetchedAt = now()
             lastUpdated = fetchedAt
+            evaluateBudget(for: cost)
 
-            if matchingItems.isEmpty {
+            if result.rows.isEmpty {
                 state = .noData(date: reportDate, fetchedAt: fetchedAt, previous: previous)
                 do {
                     try cache.save(CachedUsage(cost: cost, fetchedAt: fetchedAt, hasActivity: false, previousCost: previous))
                     logStore.debug("Cached no-data result")
                 } catch {
-                    // A cache failure must not hide a valid no-data response.
                     logStore.warning("Cache write failed for no-data result")
                 }
                 return true
             }
 
-            // Publish the live result before persistence. Cache failures are non-fatal.
             state = .loaded(cost, fetchedAt: fetchedAt, stale: false)
             do {
                 try cache.save(CachedUsage(cost: cost, fetchedAt: fetchedAt, hasActivity: true))
                 logStore.debug("Cached live result")
             } catch {
-                // The next scheduled refresh can try persistence again.
                 logStore.warning("Cache write failed for live result")
             }
             return true
@@ -258,6 +256,33 @@ public final class CostMonitorModel: ObservableObject {
             return false
         }
     }
+
+    public func exportLogs() throws -> URL {
+        let text = AppLogStore.redactForExport(logStore.text())
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        let directory = support.appendingPathComponent("MacOSAICostMonitor/exports", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("console-\(Int(now().timeIntervalSince1970)).log")
+        try text.write(to: url, atomically: true, encoding: .utf8)
+        lastLogExportURL = url
+        logStore.info("Exported sanitized console log")
+        return url
+    }
+
+    private func evaluateBudget(for cost: DailyCost) {
+        guard preferences.budgetEnabled else {
+            budgetExceeded = false
+            return
+        }
+        let displayed = preferences.includeByokInHeadline ? (cost.usage + cost.byokUsageInference) : cost.usage
+        let exceeded = displayed >= Decimal(preferences.budgetAmount)
+        if exceeded && !budgetExceeded && preferences.notifyOnBudget {
+            logStore.warning("Budget threshold reached: \(displayed) >= \(preferences.budgetAmount)")
+            BudgetNotifier.notify(amount: displayed, limit: Decimal(preferences.budgetAmount))
+        }
+        budgetExceeded = exceeded
+    }
 }
 
 public struct FixedUTCDateProvider: UTCDateProviding {
@@ -267,19 +292,11 @@ public struct FixedUTCDateProvider: UTCDateProviding {
 }
 
 public extension CostMonitorModel {
-    static func utcDate(from string: String) -> Date? {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.date(from: string)
+    nonisolated static func utcDate(from string: String) -> Date? {
+        UTCCalendar.date(from: string)
     }
 
-    static func utcDayOffset(from date: Date) -> Int {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        let start = calendar.startOfDay(for: date)
-        let reference = Date(timeIntervalSince1970: 0)
-        return calendar.dateComponents([.day], from: reference, to: start).day ?? 0
+    nonisolated static func utcDayOffset(from date: Date) -> Int {
+        UTCCalendar.dayOffset(from: date)
     }
 }

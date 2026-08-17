@@ -20,6 +20,26 @@ fi
 if command -v codesign >/dev/null 2>&1; then
   SIGNING_IDENTITY="${CODESIGN_IDENTITY:--}"
   codesign --force --deep --sign "$SIGNING_IDENTITY" "$APP_DIR"
+  codesign --verify --deep --strict "$APP_DIR"
 fi
+
+if command -v plutil >/dev/null 2>&1; then
+  plutil -lint "$APP_DIR/Contents/Info.plist"
+fi
+
+cat <<'NOTE'
+Local release bundle created.
+
+Supported here:
+  - unsigned or ad-hoc / Apple Development codesign
+  - codesign --verify --deep --strict
+  - plutil -lint
+
+Not included in this app:
+  - Developer ID notarization (use notarytool separately)
+  - Sparkle / auto-update
+  - Mac App Store packaging and sandbox entitlements
+  - OpenRouter OAuth login (analytics requires a management key)
+NOTE
 
 printf '%s\n' "$APP_DIR"

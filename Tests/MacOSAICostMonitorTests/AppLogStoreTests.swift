@@ -38,6 +38,21 @@ final class AppLogStoreTests: XCTestCase {
         XCTAssertFalse(AppLogStore.redactForExport(raw.message).contains("secret-value"))
     }
 
+    func test_exportWritesRedactedFile() throws {
+        let store = AppLogStore()
+        store.info("token=secret-value")
+        let model = CostMonitorModel(
+            provider: FakeUsageProvider(),
+            secretStore: InMemorySecretStore(),
+            cache: InMemoryCostCache(),
+            logStore: store
+        )
+        let url = try model.exportLogs()
+        let text = try String(contentsOf: url)
+        XCTAssertFalse(text.contains("secret-value"))
+        XCTAssertTrue(text.contains("[REDACTED]"))
+    }
+
     func test_filtersByLevelInConsumer() {
         let store = AppLogStore()
         store.debug("details")

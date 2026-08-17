@@ -117,12 +117,102 @@ public enum ReportTimeRange: String, CaseIterable, Codable, Sendable, Identifiab
         }
     }
 
-    public var isSupported: Bool {
+    public var isSupported: Bool { true }
+
+    public var analyticsGranularity: AnalyticsGranularity {
         switch self {
-        case .custom, .past15Minutes, .past30Minutes, .pastHour, .past3Hours, .past24Hours, .pastYear, .thisYear, .previousYear:
-            return false
+        case .past15Minutes, .past30Minutes:
+            return .minute
+        case .pastHour, .past3Hours, .past24Hours, .today:
+            return .hour
+        case .pastYear, .thisYear, .previousYear:
+            return .month
         default:
-            return true
+            return .day
+        }
+    }
+
+    public func absoluteWindow(
+        now: Date,
+        timeZone: TimeZone,
+        customStart: Date?,
+        customEnd: Date?
+    ) -> ClosedRange<Date> {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        calendar.firstWeekday = 2
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+
+        func startOfDay(_ date: Date) -> Date {
+            calendar.startOfDay(for: date)
+        }
+        func add(_ component: Calendar.Component, value: Int, to date: Date) -> Date {
+            calendar.date(byAdding: component, value: value, to: date) ?? date
+        }
+
+        switch self {
+        case .past15Minutes:
+            return add(.minute, value: -15, to: now)...now
+        case .past30Minutes:
+            return add(.minute, value: -30, to: now)...now
+        case .pastHour:
+            return add(.hour, value: -1, to: now)...now
+        case .past3Hours:
+            return add(.hour, value: -3, to: now)...now
+        case .past24Hours:
+            return add(.hour, value: -24, to: now)...now
+        case .past48Hours:
+            return add(.hour, value: -48, to: now)...now
+        case .pastWeek:
+            return add(.day, value: -7, to: now)...now
+        case .pastMonth:
+            return add(.month, value: -1, to: now)...now
+        case .pastYear:
+            return add(.year, value: -1, to: now)...now
+        case .today:
+            return startOfDay(now)...now
+        case .yesterday:
+            let start = startOfDay(add(.day, value: -1, to: now))
+            let end = startOfDay(now)
+            return start...end
+        case .thisWeek:
+            let weekday = calendar.component(.weekday, from: now)
+            let daysFromMonday = (weekday + 5) % 7
+            let start = startOfDay(add(.day, value: -daysFromMonday, to: now))
+            return start...now
+        case .previousWeek:
+            let weekday = calendar.component(.weekday, from: now)
+            let daysFromMonday = (weekday + 5) % 7
+            let thisMonday = startOfDay(add(.day, value: -daysFromMonday, to: now))
+            let previousMonday = add(.day, value: -7, to: thisMonday)
+            return previousMonday...thisMonday
+        case .thisMonth:
+            let comps = calendar.dateComponents([.year, .month], from: now)
+            let start = calendar.date(from: comps) ?? startOfDay(now)
+            return start...now
+        case .previousMonth:
+            let comps = calendar.dateComponents([.year, .month], from: now)
+            let thisMonth = calendar.date(from: comps) ?? startOfDay(now)
+            let previous = add(.month, value: -1, to: thisMonth)
+            return previous...thisMonth
+        case .thisYear:
+            let comps = calendar.dateComponents([.year], from: now)
+            let start = calendar.date(from: comps) ?? startOfDay(now)
+            return start...now
+        case .previousYear:
+            let comps = calendar.dateComponents([.year], from: now)
+            let thisYear = calendar.date(from: comps) ?? startOfDay(now)
+            let previous = add(.year, value: -1, to: thisYear)
+            return previous...thisYear
+        case .custom:
+            let start = customStart ?? add(.day, value: -1, to: now)
+            let end = customEnd ?? now
+            return min(start, end)...max(start, end)
+        case .latestAvailableDay:
+            let start = UTCCalendar.startOfDay(add(.day, value: -1, to: now))
+            return start...now
+        case .last30CompletedDays:
+            return add(.day, value: -30, to: now)...now
         }
     }
 
@@ -174,7 +264,7 @@ public enum ReportTimeRange: String, CaseIterable, Codable, Sendable, Identifiab
         switch self {
         case .latestAvailableDay:
             return "Latest completed UTC day"
-        case .last30CompletedDays, .previousWeek:
+        case .last30CompletedDays:
             return "Last 30 completed UTC days"
         default:
             return title
@@ -229,6 +319,17 @@ public final class ReportingPreferences: ObservableObject {
         static let refreshInterval = "refreshInterval"
         static let includeByok = "includeByokInHeadline"
         static let captureRawHTTPResponses = "captureRawHTTPResponses"
+        static let timeZoneIdentifier = "displayTimeZoneIdentifier"
+        static let customStart = "customRangeStart"
+        static let customEnd = "customRangeEnd"
+        static let budgetEnabled = "budgetEnabled"
+        static let budgetAmount = "budgetAmount"
+        static let notifyOnBudget = "notifyOnBudget"
+        static let showTokenDetails = "showTokenDetails"
+        static let showRequestDetails = "showRequestDetails"
+        static let showProviderDetails = "showProviderDetails"
+        static let showFullBreakdown = "showFullBreakdown"
+        static let useLocalCalendar = "useLocalCalendar"
     }
 
     private let defaults: UserDefaults
@@ -274,6 +375,57 @@ public final class ReportingPreferences: ObservableObject {
         didSet { defaults.set(captureRawHTTPResponses, forKey: Keys.captureRawHTTPResponses) }
     }
 
+    @Published public var timeZoneIdentifier: String {
+        didSet { defaults.set(timeZoneIdentifier, forKey: Keys.timeZoneIdentifier) }
+    }
+
+    @Published public var customStart: Date {
+        didSet { defaults.set(customStart, forKey: Keys.customStart) }
+    }
+
+    @Published public var customEnd: Date {
+        didSet { defaults.set(customEnd, forKey: Keys.customEnd) }
+    }
+
+    @Published public var budgetEnabled: Bool {
+        didSet { defaults.set(budgetEnabled, forKey: Keys.budgetEnabled) }
+    }
+
+    @Published public var budgetAmount: Double {
+        didSet { defaults.set(budgetAmount, forKey: Keys.budgetAmount) }
+    }
+
+    @Published public var notifyOnBudget: Bool {
+        didSet { defaults.set(notifyOnBudget, forKey: Keys.notifyOnBudget) }
+    }
+
+    @Published public var showTokenDetails: Bool {
+        didSet { defaults.set(showTokenDetails, forKey: Keys.showTokenDetails) }
+    }
+
+    @Published public var showRequestDetails: Bool {
+        didSet { defaults.set(showRequestDetails, forKey: Keys.showRequestDetails) }
+    }
+
+    @Published public var showProviderDetails: Bool {
+        didSet { defaults.set(showProviderDetails, forKey: Keys.showProviderDetails) }
+    }
+
+    @Published public var showFullBreakdown: Bool {
+        didSet { defaults.set(showFullBreakdown, forKey: Keys.showFullBreakdown) }
+    }
+
+    @Published public var useLocalCalendar: Bool {
+        didSet { defaults.set(useLocalCalendar, forKey: Keys.useLocalCalendar) }
+    }
+
+    public var displayTimeZone: TimeZone {
+        if useLocalCalendar {
+            return TimeZone(identifier: timeZoneIdentifier) ?? .current
+        }
+        return TimeZone(secondsFromGMT: 0) ?? .current
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         provider = ProviderOption(rawValue: defaults.string(forKey: Keys.provider) ?? "") ?? .openRouter
@@ -286,6 +438,17 @@ public final class ReportingPreferences: ObservableObject {
         refreshInterval = defaults.object(forKey: Keys.refreshInterval) as? TimeInterval ?? 300
         includeByokInHeadline = defaults.object(forKey: Keys.includeByok) as? Bool ?? false
         captureRawHTTPResponses = defaults.object(forKey: Keys.captureRawHTTPResponses) as? Bool ?? false
+        timeZoneIdentifier = defaults.string(forKey: Keys.timeZoneIdentifier) ?? TimeZone.current.identifier
+        customEnd = defaults.object(forKey: Keys.customEnd) as? Date ?? Date()
+        customStart = defaults.object(forKey: Keys.customStart) as? Date ?? customEnd.addingTimeInterval(-86_400)
+        budgetEnabled = defaults.object(forKey: Keys.budgetEnabled) as? Bool ?? false
+        budgetAmount = defaults.object(forKey: Keys.budgetAmount) as? Double ?? 5
+        notifyOnBudget = defaults.object(forKey: Keys.notifyOnBudget) as? Bool ?? true
+        showTokenDetails = defaults.object(forKey: Keys.showTokenDetails) as? Bool ?? true
+        showRequestDetails = defaults.object(forKey: Keys.showRequestDetails) as? Bool ?? true
+        showProviderDetails = defaults.object(forKey: Keys.showProviderDetails) as? Bool ?? true
+        showFullBreakdown = defaults.object(forKey: Keys.showFullBreakdown) as? Bool ?? false
+        useLocalCalendar = defaults.object(forKey: Keys.useLocalCalendar) as? Bool ?? true
     }
 
     public var refreshIntervalLabel: String {

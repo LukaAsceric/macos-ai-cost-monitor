@@ -33,7 +33,7 @@ public struct DashboardView: View {
                 Text(dateLabel)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("OpenRouter time basis: UTC")
+                Text(preferences.useLocalCalendar ? "Display timezone: \(preferences.displayTimeZone.identifier)" : "OpenRouter time basis: UTC")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -101,26 +101,44 @@ public struct DashboardView: View {
                         .background(.orange.opacity(0.15))
                         .clipShape(Capsule())
                 }
+                if model.budgetExceeded {
+                    Text("budget")
+                        .font(.caption2)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(.red.opacity(0.15))
+                        .clipShape(Capsule())
+                }
+            }
+            if !model.series.isEmpty {
+                SpendChartView(points: model.series)
+                    .frame(height: 72)
             }
             HStack(spacing: 12) {
-                metric("Requests", value: CostFormatStyle.tokens(cost.requests))
-                metric("Prompt", value: CostFormatStyle.tokens(cost.promptTokens))
-                metric("Completion", value: CostFormatStyle.tokens(cost.completionTokens))
-                metric("Reasoning", value: CostFormatStyle.tokens(cost.reasoningTokens))
+                if preferences.showRequestDetails {
+                    metric("Requests", value: CostFormatStyle.tokens(cost.requests))
+                }
+                if preferences.showTokenDetails {
+                    metric("Prompt", value: CostFormatStyle.tokens(cost.promptTokens))
+                    metric("Completion", value: CostFormatStyle.tokens(cost.completionTokens))
+                    metric("Reasoning", value: CostFormatStyle.tokens(cost.reasoningTokens))
+                }
             }
             metric("Estimated BYOK", value: CostFormatStyle.headline(cost.byokUsageInference, maximumFractionDigits: preferences.decimalPlaces))
             if !cost.breakdowns.isEmpty {
                 Divider()
                 Text("By model")
                     .font(.subheadline.weight(.medium))
-                ForEach(cost.breakdowns.prefix(5)) { breakdown in
+                ForEach(preferences.showFullBreakdown ? cost.breakdowns : Array(cost.breakdowns.prefix(5))) { breakdown in
                     HStack {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(breakdown.model)
                                 .lineLimit(1)
-                            Text(breakdown.provider)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            if preferences.showProviderDetails {
+                                Text(breakdown.provider)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                         Spacer()
                         Text(CostFormatStyle.headline(breakdown.usage, maximumFractionDigits: preferences.decimalPlaces))
@@ -193,7 +211,7 @@ public struct DashboardView: View {
     }
 
     private func reportDateLabel(_ date: String) -> String {
-        date == "Last 30 completed UTC days" ? date : "\(date) UTC"
+        date
     }
 
     private var isRefreshing: Bool {

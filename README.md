@@ -2,101 +2,108 @@
 
 A native macOS menu-bar application for monitoring AI service spend, starting with OpenRouter.
 
-## MVP status
+## Current status
 
-The first implementation targets OpenRouter account activity and displays the spend reported for the newest **completed UTC date** currently returned by OpenRouter. The menu-bar value is account-level OpenRouter usage, not a locally inferred estimate.
-
-### OpenRouter limitation
-
-The OpenRouter activity API is:
+The app queries OpenRouter **Analytics**:
 
 ```text
-GET https://openrouter.ai/api/v1/activity?date=YYYY-MM-DD
+POST https://openrouter.ai/api/v1/analytics/query
 ```
 
-It requires an OpenRouter **management API key** with activity access and exposes the last 30 completed UTC days. The application requests that recent window without a date filter, then selects the newest date actually returned. Exact real-time local-day totals require request instrumentation or a future event-level API and are not claimed by this MVP.
+That endpoint accepts an explicit `time_range` and `granularity` (`minute`, `hour`, `day`, `week`, `month`). The browser Activity UI uses the same contract. A management key is required. Regular inference keys and OpenRouter OAuth PKCE keys return 403 here.
 
-The headline total sums each activity row's `usage` field. `byok_usage_inference` is retained as a separate estimated BYOK amount and is not added to the headline total.
+The older Activity endpoint (`GET /api/v1/activity`) remains available as a fallback client method, but the live dashboard uses Analytics.
 
-## Reporting settings
+## Reporting
 
-The Settings panel supports:
+All screenshot-style ranges are enabled:
 
-- **Latest available day**: show the newest completed UTC day returned by OpenRouter.
-- **Last 30 completed days**: aggregate the full activity window returned by OpenRouter.
-- **Refresh interval**: 1, 5, 15, or 30 minutes.
-- **Cost decimals**: choose 2–8 displayed fractional digits; the default is 6 so small costs remain visible.
-- **Include estimated BYOK in headline**: optionally add OpenRouter's estimated BYOK amount to the menu-bar headline. It remains separately labeled in the details.
+- Relative: Past 15/30 minutes, 1/3/24/48 hours, 1 week, 1 month, 1 year
+- Calendar: Today, Yesterday, This/Previous Week, This/Previous Month, This/Previous Year
+- Custom range with From/To pickers
+- Latest available completed UTC day and last 30 days
 
-The service's reporting dates are UTC because that is the API's accounting basis. A local timezone selector would change presentation labels but cannot convert the API's completed UTC-day buckets into exact local-day totals.
+Calendar ranges use the selected display timezone. The example payload from the OpenRouter UI:
+
+```json
+{
+  "metrics": ["total_usage"],
+  "dimensions": ["model"],
+  "granularity": "day",
+  "time_range": {
+    "start": "2026-08-16T22:00:00.000Z",
+    "end": "2026-08-17T20:59:02.061Z"
+  }
+}
+```
+
+is the same shape this app sends. `Today` in GMT+2 therefore starts at `22:00Z` the previous UTC day.
+
+## Settings
+
+The retained settings window has:
+
+- **General**
+- **Provider** — OpenRouter is enabled; other providers remain listed as coming soon
+- **Reporting** — ranges, timezone, decimals, detail toggles, raw HTTP capture
+- **Alerts** — local budget threshold and optional macOS notification
+- **Release** — what local signing can and cannot do
+- **Console** — filter, copy, clear, sanitized log export
+
+The window can only be closed. It cannot be minimized or maximized.
+
+## Product features
+
+- Compact menu-bar popover with spend, optional token/request/provider details, and a sparkline
+- Local budget threshold with optional notification
+- Sanitized console export to Application Support
+- Signed local `.app` via `Scripts/build-app.sh`
+
+Not included, and documented in Settings → Release:
+
+- Auto-update
+- Developer ID notarization
+- Mac App Store packaging
+- OAuth login — OpenRouter OAuth mints an inference key, not a management key
 
 ## Requirements
 
 - macOS 13 Ventura or later
 - Xcode Command Line Tools or Xcode
-- An OpenRouter management API key with activity read access
+- An OpenRouter management API key with analytics/activity access
 
 ## Build and run
 
 ```bash
 swift build
 swift test
-swift run
-```
-
-To create a local application bundle:
-
-```bash
 bash Scripts/build-app.sh
 open dist/MacOSAICostMonitor.app
 ```
 
-Use the signed `.app` bundle for normal operation. `swift run` launches a development executable whose code identity can change after rebuilds; macOS may consequently ask for Keychain authorization again. For a stable local identity, build with an explicit signing identity:
+Use the signed `.app` for normal operation. `swift run` can change the development executable identity and cause repeated Keychain prompts.
 
 ```bash
 CODESIGN_IDENTITY="Apple Development: Your Name (TEAMID)" bash Scripts/build-app.sh
-open dist/MacOSAICostMonitor.app
 ```
 
-The app reads the management key once per launch and keeps it only in memory for subsequent refreshes. Keychain reads are non-interactive; if macOS requires authorization for an existing item, the app reports that requirement instead of triggering a password prompt from every refresh.
-
 The key is stored in the macOS Keychain. It is not written to UserDefaults, the usage cache, logs, or the application bundle.
-
-## Standalone settings and diagnostics
-
-The menu-bar popover remains a compact dashboard. Open **Settings…** from the application menu or select **Settings** in the popover to open a retained, resizable settings window. It contains:
-
-- **General**: provider, time-basis, cache, and diagnostic behavior.
-- **Provider**: choose the active provider and save or delete its management key securely.
-- **Reporting**: range, refresh interval, decimal precision, and BYOK headline behavior.
-- **Console**: a searchable, level-filtered live diagnostic stream with Copy and Clear actions.
-
-The Provider section now includes a catalog of common providers. OpenRouter is enabled; OpenAI, Anthropic, Google AI, Mistral, Groq, xAI, Together AI, Fireworks AI, DeepSeek, Cohere, and Perplexity are listed as disabled “Coming soon” options until their integrations are implemented.
-
-The Reporting section mirrors the supplied range picker with relative ranges such as “Past 15 Minutes”, calendar ranges such as “Today” and “Previous Month”, and a “Custom range…” entry. These remain disabled because OpenRouter activity currently exposes completed UTC-day buckets only. The enabled choices are “Latest available completed UTC day” and “Last 30 completed UTC days”.
-
-The Console is deliberately metadata-only by default. An explicit **Capture raw HTTP responses** opt-in can show the OpenRouter response body for troubleshooting; it is held only in the in-memory console, capped by the existing capacity, and may contain account activity details. Authorization headers and management keys are never captured, and Copy applies redaction again. Raw capture is off by default.
 
 ## Setup
 
 1. Create a management key in OpenRouter Settings → Management Keys.
-2. Grant the key activity read access.
-3. Launch the application.
-4. Open Settings from the menu-bar popover and paste the key into the secure field.
-5. Save, then use **Refresh now**.
-
-A regular inference key is not sufficient for the activity endpoint. If the requested completed UTC day has no published data, the application reports that state and keeps the date labeled UTC.
+2. Grant analytics/activity read access.
+3. Launch the signed app.
+4. Open Settings and paste the key.
+5. Choose a report range and use **Refresh now**.
 
 ## Troubleshooting
 
-- **401:** the key was rejected or revoked; create/check the key again.
-- **403:** the key lacks management/activity permission.
-- **429:** OpenRouter rate-limited the request; the app will retry on its normal schedule.
-- **Network failure:** the last successful value may remain visible but is marked stale.
-- **Repeated Keychain prompts:** do not use `swift run` for normal operation. Build and launch `dist/MacOSAICostMonitor.app` so macOS sees a stable signed application identity. The app reads the key once per launch and uses non-interactive Keychain reads thereafter.
-- If an older `swift run` build owns the existing item, remove only the app's old item in Keychain Access (service `com.example.MacOSAICostMonitor`, account `openrouter-management-key`), then save the key again from the signed `.app`.
-- **No completed-day data:** OpenRouter has not published activity for the requested completed UTC day yet.
+- **401:** the key was rejected or revoked
+- **403:** the key is not a management key or lacks analytics access
+- **429:** OpenRouter rate-limited the request
+- **Repeated Keychain prompts:** launch `dist/MacOSAICostMonitor.app`, not `swift run`
 
 ## Development note
 
-The repository can be edited on Linux, but AppKit, SwiftUI, Keychain Services, `swift test`, and `.app` verification must be run on macOS. The CI/release checklist should run `swift test`, `Scripts/build-app.sh`, `plutil`, and `codesign --verify --deep --strict` on a macOS runner.
+The repository can be edited on Linux, but AppKit, SwiftUI, Keychain, `swift test`, and `.app` verification must be run on macOS.

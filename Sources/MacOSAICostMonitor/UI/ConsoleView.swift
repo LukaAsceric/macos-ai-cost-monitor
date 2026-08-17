@@ -4,11 +4,14 @@ import SwiftUI
 @MainActor
 public struct ConsoleView: View {
     @ObservedObject private var logStore: AppLogStore
+    private let model: CostMonitorModel?
     @State private var search = ""
     @State private var selectedLevel: LogLevel? = nil
+    @State private var exportMessage: String?
 
-    public init(logStore: AppLogStore) {
+    public init(logStore: AppLogStore, model: CostMonitorModel? = nil) {
         self.logStore = logStore
+        self.model = model
     }
 
     private var filteredEntries: [LogEntry] {
@@ -45,6 +48,18 @@ public struct ConsoleView: View {
                 .disabled(filteredEntries.isEmpty)
                 Button("Clear") { logStore.clear() }
                     .disabled(logStore.entries.isEmpty)
+                if let model {
+                    Button("Export") {
+                        do {
+                            let url = try model.exportLogs()
+                            exportMessage = url.path
+                            NSWorkspace.shared.activateFileViewerSelecting([url])
+                        } catch {
+                            exportMessage = "Export failed"
+                        }
+                    }
+                    .disabled(logStore.entries.isEmpty)
+                }
             }
             .padding(.bottom, 14)
 
@@ -88,6 +103,12 @@ public struct ConsoleView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.top, 8)
+            if let exportMessage {
+                Text(exportMessage)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
         }
         .padding(28)
     }

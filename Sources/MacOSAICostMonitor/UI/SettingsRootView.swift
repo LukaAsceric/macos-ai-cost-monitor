@@ -6,6 +6,8 @@ public struct SettingsRootView: View {
         case general
         case provider
         case reporting
+        case alerts
+        case release
         case console
 
         public var id: String { rawValue }
@@ -15,6 +17,8 @@ public struct SettingsRootView: View {
             case .general: return "General"
             case .provider: return "Provider"
             case .reporting: return "Reporting"
+            case .alerts: return "Alerts"
+            case .release: return "Release"
             case .console: return "Console"
             }
         }
@@ -24,6 +28,8 @@ public struct SettingsRootView: View {
             case .general: return "gearshape"
             case .provider: return "network"
             case .reporting: return "chart.bar"
+            case .alerts: return "bell"
+            case .release: return "shippingbox"
             case .console: return "terminal"
             }
         }
@@ -63,8 +69,12 @@ public struct SettingsRootView: View {
             ProviderSettingsSection(model: model)
         case .reporting:
             ReportingSettingsSection(model: model)
+        case .alerts:
+            AlertsSettingsSection(model: model)
+        case .release:
+            ReleaseSettingsSection()
         case .console:
-            ConsoleView(logStore: logStore)
+            ConsoleView(logStore: logStore, model: model)
         }
     }
 }
@@ -197,7 +207,11 @@ private struct ReportingSettingsSection: View {
                 TimeRangeGroupView(title: "Available from OpenRouter", ranges: [
                     .latestAvailableDay, .last30CompletedDays
                 ], preferences: preferences, onSelect: applyTimeRange)
-                Text("OpenRouter currently exposes completed UTC-day buckets. Minute/hour, local-calendar, and custom ranges are shown for orientation but remain disabled until a provider API can support them accurately.")
+                if preferences.timeRange == .custom {
+                    DatePicker("From", selection: $preferences.customStart)
+                    DatePicker("To", selection: $preferences.customEnd)
+                }
+                Text("Ranges are queried from POST /api/v1/analytics/query with an explicit time_range. Calendar ranges use the selected display timezone. Minute and hour ranges use matching analytics granularity.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -213,7 +227,16 @@ private struct ReportingSettingsSection: View {
                         Text("\(places)").tag(places)
                     }
                 }
+                Toggle("Use local calendar for Today / This Week / This Month", isOn: $preferences.useLocalCalendar)
+                Picker("Display timezone", selection: $preferences.timeZoneIdentifier) {
+                    Text(TimeZone.current.identifier).tag(TimeZone.current.identifier)
+                    Text("UTC").tag("GMT")
+                }
                 Toggle("Include estimated BYOK in headline", isOn: $preferences.includeByokInHeadline)
+                Toggle("Show request counts", isOn: $preferences.showRequestDetails)
+                Toggle("Show token details", isOn: $preferences.showTokenDetails)
+                Toggle("Show provider names", isOn: $preferences.showProviderDetails)
+                Toggle("Show full model list", isOn: $preferences.showFullBreakdown)
                 Toggle("Capture raw HTTP responses in Console", isOn: $preferences.captureRawHTTPResponses)
                 Text("Raw capture is off by default. When enabled, response bodies are held only in the in-memory console and may contain account activity details.")
                     .font(.caption)
@@ -224,6 +247,65 @@ private struct ReportingSettingsSection: View {
             .onChange(of: preferences.refreshInterval) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.includeByokInHeadline) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.captureRawHTTPResponses) { _ in model.applyPreferenceChanges() }
+            .onChange(of: preferences.useLocalCalendar) { _ in model.applyPreferenceChanges() }
+            .onChange(of: preferences.timeZoneIdentifier) { _ in model.applyPreferenceChanges() }
+            .onChange(of: preferences.customStart) { _ in model.applyPreferenceChanges() }
+            .onChange(of: preferences.customEnd) { _ in model.applyPreferenceChanges() }
+            .onChange(of: preferences.showRequestDetails) { _ in model.applyPreferenceChanges() }
+            .onChange(of: preferences.showTokenDetails) { _ in model.applyPreferenceChanges() }
+            .onChange(of: preferences.showProviderDetails) { _ in model.applyPreferenceChanges() }
+            .onChange(of: preferences.showFullBreakdown) { _ in model.applyPreferenceChanges() }
+        }
+    }
+}
+
+@MainActor
+private struct AlertsSettingsSection: View {
+    @ObservedObject var model: CostMonitorModel
+    @ObservedObject private var preferences: ReportingPreferences
+
+    init(model: CostMonitorModel) {
+        self.model = model
+        self.preferences = model.preferences
+    }
+
+    var body: some View {
+        SettingsSection(title: "Alerts", subtitle: "Local budget threshold for the currently selected report range.") {
+            SettingsCard(title: "Budget") {
+                Toggle("Enable budget threshold", isOn: $preferences.budgetEnabled)
+                TextField("Budget USD", value: $preferences.budgetAmount, format: .number)
+                    .textFieldStyle(.roundedBorder)
+                Toggle("Notify when the threshold is reached", isOn: $preferences.notifyOnBudget)
+                if model.budgetExceeded {
+                    Text("The current report is at or above the configured budget.")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+                Text("Notifications are local macOS alerts. They require notification permission and do not contact OpenRouter.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .onChange(of: preferences.budgetEnabled) { _ in model.applyPreferenceChanges() }
+            .onChange(of: preferences.budgetAmount) { _ in model.applyPreferenceChanges() }
+            .onChange(of: preferences.notifyOnBudget) { _ in model.applyPreferenceChanges() }
+        }
+    }
+}
+
+@MainActor
+private struct ReleaseSettingsSection: View {
+    var body: some View {
+        SettingsSection(title: "Release", subtitle: "Local signing is supported. Notarization, auto-update, and App Store distribution are not built into this app.") {
+            SettingsCard(title: "What this build can do") {
+                LabeledContent("Local .app", value: "Scripts/build-app.sh")
+                LabeledContent("Ad-hoc or Development signing", value: "CODESIGN_IDENTITY")
+                LabeledContent("Auto-update", value: "Not included")
+                LabeledContent("Notarization", value: "Manual Xcode / notarytool")
+                LabeledContent("App Store", value: "Not included")
+                Text("OpenRouter OAuth PKCE mints a regular inference key. Analytics and activity require a management key, so this app keeps Keychain-based management-key setup instead of OAuth login.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }

@@ -76,7 +76,7 @@ public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
                 throw OpenRouterClientError.invalidResponse
             }
             if captureRawResponse {
-                await logRawResponse(data: data, statusCode: httpResponse.statusCode)
+                await logRawResponse(path: "/api/v1/activity", data: data, statusCode: httpResponse.statusCode)
             }
             switch httpResponse.statusCode {
             case 200..<300:
@@ -120,12 +120,61 @@ public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
         try await activity(for: "", apiKey: apiKey, captureRawResponse: captureRawResponse)
     }
 
-    private func logRawResponse(data: Data, statusCode: Int) async {
+    public func queryAnalytics(_ query: AnalyticsQuery, apiKey: String, captureRawResponse: Bool) async throws -> AnalyticsQueryResult {
+        let url = baseURL.appendingPathComponent("analytics").appendingPathComponent("query")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 30
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try JSONSerialization.data(withJSONObject: query.jsonObject(), options: [])
+
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw OpenRouterClientError.invalidResponse
+            }
+            if captureRawResponse {
+                await logRawResponse(path: "/api/v1/analytics/query", data: data, statusCode: httpResponse.statusCode)
+            }
+            switch httpResponse.statusCode {
+            case 200..<300:
+                break
+            case 401:
+                throw OpenRouterClientError.unauthorized
+            case 403:
+                throw OpenRouterClientError.forbidden
+            case 429:
+                throw OpenRouterClientError.rateLimited
+            case 400, 408:
+                throw OpenRouterClientError.invalidRequest(message: nil)
+            case 500...599:
+                throw OpenRouterClientError.server(statusCode: httpResponse.statusCode)
+            default:
+                throw OpenRouterClientError.invalidResponse
+            }
+            do {
+                return try AnalyticsResponseDecoder.decode(data)
+            } catch {
+                throw OpenRouterClientError.decoding
+            }
+        } catch let error as OpenRouterClientError {
+            throw error
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            if Task.isCancelled { throw CancellationError() }
+            throw OpenRouterClientError.network
+        }
+    }
+
+    private func logRawResponse(path: String = "/api/v1/activity", data: Data, statusCode: Int) async {
         let maxBytes = 64 * 1024
         let captured = data.prefix(maxBytes)
         let body = String(data: captured, encoding: .utf8) ?? "<non-UTF8 response>"
         let suffix = data.count > maxBytes ? "\n[truncated after \(maxBytes) bytes]" : ""
-        await diagnosticLogStore?.info("HTTP response GET /api/v1/activity status=\(statusCode) bytes=\(data.count)")
+        await diagnosticLogStore?.info("HTTP response POST \(path) status=\(statusCode) bytes=\(data.count)")
         await diagnosticLogStore?.debug("RAW HTTP RESPONSE BODY:\n\(body)\(suffix)")
     }
 
