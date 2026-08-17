@@ -69,7 +69,7 @@ public final class CostMonitorModel: ObservableObject {
         secretStore: any SecretStore,
         cache: any CostCache,
         dateProvider: any UTCDateProviding = SystemUTCDateProvider(),
-        now: @escaping @Sendable () -> Date = Date.init
+        now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.provider = provider
         self.secretStore = secretStore

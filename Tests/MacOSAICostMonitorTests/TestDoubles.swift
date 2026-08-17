@@ -1,4 +1,5 @@
 import Foundation
+@testable import MacOSAICostMonitor
 
 private final class TestURLProtocolStore: @unchecked Sendable {
     let lock = NSLock()
@@ -10,12 +11,12 @@ final class TestURLProtocol: URLProtocol {
     private static let store = TestURLProtocolStore()
 
     static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))? {
-        get { store.withLock { store.requestHandler } }
-        set { store.withLock { store.requestHandler = newValue } }
+        get { store.lock.withLock { store.requestHandler } }
+        set { store.lock.withLock { store.requestHandler = newValue } }
     }
 
     static var lastRequest: URLRequest? {
-        store.withLock { store.lastRequest }
+        store.lock.withLock { store.lastRequest }
     }
 
     override class func canInit(with request: URLRequest) -> Bool { true }
@@ -23,7 +24,7 @@ final class TestURLProtocol: URLProtocol {
 
     override func startLoading() {
         do {
-            Self.store.withLock { Self.store.lastRequest = request }
+            Self.store.lock.withLock { Self.store.lastRequest = request }
             guard let requestHandler = Self.requestHandler else {
                 throw URLError(.badServerResponse)
             }
@@ -39,7 +40,7 @@ final class TestURLProtocol: URLProtocol {
     override func stopLoading() {}
 
     static func reset() {
-        store.withLock {
+        store.lock.withLock {
             store.requestHandler = nil
             store.lastRequest = nil
         }
