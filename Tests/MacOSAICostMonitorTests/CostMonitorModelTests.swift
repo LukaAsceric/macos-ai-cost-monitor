@@ -59,7 +59,7 @@ final class CostMonitorModelTests: XCTestCase {
         XCTAssertEqual(cache.load()?.cost, cost)
     }
 
-    func test_emptyCurrentDayPublishesNoDataInsteadOfYesterdayAsToday() async {
+    func test_emptyRecentActivityPublishesNoData() async {
         let model = await MainActor.run {
             CostMonitorModel(
                 provider: FakeUsageProvider(items: []),
@@ -74,32 +74,6 @@ final class CostMonitorModelTests: XCTestCase {
 
         let state = await MainActor.run { model.state }
         XCTAssertEqual(state, .noData(date: "2026-08-17", fetchedAt: Date(timeIntervalSince1970: 456), previous: nil))
-    }
-
-    func test_wrongDateRowsProduceNoData() async {
-        let wrongDateItem = ActivityItem(
-            date: "2026-08-16",
-            model: "openai/gpt-5",
-            providerName: "OpenAI",
-            usage: Decimal(string: "9.99")!,
-            requests: 1,
-            promptTokens: 1,
-            completionTokens: 1
-        )
-        let model = await MainActor.run {
-            CostMonitorModel(
-                provider: FakeUsageProvider(items: [wrongDateItem]),
-                secretStore: InMemorySecretStore(value: "test-key"),
-                cache: InMemoryCostCache(),
-                dateProvider: FixedUTCDateProvider(date: "2026-08-17"),
-                now: { Date(timeIntervalSince1970: 456) }
-            )
-        }
-
-        await model.refresh()
-
-        let wrongDateState = await MainActor.run { model.state }
-        XCTAssertEqual(wrongDateState, .noData(date: "2026-08-17", fetchedAt: Date(timeIntervalSince1970: 456), previous: nil))
     }
 
     func test_noDataPreservesPreviousValue() async {
@@ -122,6 +96,21 @@ final class CostMonitorModelTests: XCTestCase {
             return XCTFail("Expected no-data state")
         }
         XCTAssertEqual(preserved, previous)
+    }
+
+    func test_cachedPreviousDayRemainsVisibleUntilNewActivityArrives() async {
+        let previous = DailyCost.empty(for: "2026-08-16")
+        let model = await MainActor.run {
+            CostMonitorModel(
+                provider: FakeUsageProvider(items: []),
+                secretStore: InMemorySecretStore(value: "test-key"),
+                cache: InMemoryCostCache(value: CachedUsage(cost: previous, fetchedAt: Date(timeIntervalSince1970: 10))),
+                dateProvider: FixedUTCDateProvider(date: "2026-08-17")
+            )
+        }
+
+        let state = await MainActor.run { model.state }
+        XCTAssertEqual(state.dailyCost, previous)
     }
 
     func test_cacheWriteFailureDoesNotDiscardSuccessfulLiveResult() async {
@@ -230,6 +219,11 @@ private final class FakeUsageProvider: UsageProvider, @unchecked Sendable {
     }
 
     func activity(for date: String, apiKey: String) async throws -> [ActivityItem] {
+        if let error { throw error }
+        return items
+    }
+
+    func recentActivity(apiKey: String) async throws -> [ActivityItem] {
         if let error { throw error }
         return items
     }

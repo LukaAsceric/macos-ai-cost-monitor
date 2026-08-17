@@ -8,6 +8,8 @@ public final class StatusBarController: NSObject {
     private let statusItem: NSStatusItem
     private let popover = NSPopover()
     private var stateSubscription: AnyCancellable?
+    private var globalMouseMonitor: Any?
+    private var localMouseMonitor: Any?
 
     public init(model: CostMonitorModel) {
         self.model = model
@@ -25,18 +27,62 @@ public final class StatusBarController: NSObject {
                     self?.updateTitle()
                 }
             }
+        installMouseMonitors()
         updateTitle()
+    }
+
+    deinit {
+        if let globalMouseMonitor {
+            NSEvent.removeMonitor(globalMouseMonitor)
+        }
+        if let localMouseMonitor {
+            NSEvent.removeMonitor(localMouseMonitor)
+        }
     }
 
     @objc private func togglePopover() {
         guard let button = statusItem.button else { return }
         if popover.isShown {
-            popover.performClose(nil)
+            closePopover()
         } else {
             let view = DashboardView(model: model) { NSApp.terminate(nil) }
             popover.contentViewController = NSHostingController(rootView: view)
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         }
+    }
+
+    private func installMouseMonitors() {
+        let mask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] _ in
+            Task { @MainActor in
+                self?.closePopover()
+            }
+        }
+        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] event in
+            Task { @MainActor in
+                guard let self, self.popover.isShown else { return }
+                if self.isInsidePopover(event) || self.isInsideStatusItem(event) {
+                    return
+                }
+                self.closePopover()
+            }
+            return event
+        }
+    }
+
+    private func isInsidePopover(_ event: NSEvent) -> Bool {
+        guard let window = popover.contentViewController?.view.window else { return false }
+        return window.frame.contains(NSEvent.mouseLocation)
+    }
+
+    private func isInsideStatusItem(_ event: NSEvent) -> Bool {
+        guard let window = statusItem.button?.window else { return false }
+        return window.frame.contains(NSEvent.mouseLocation)
+    }
+
+    private func closePopover() {
+        guard popover.isShown else { return }
+        popover.performClose(nil)
     }
 
     private func updateTitle() {

@@ -29,6 +29,23 @@ final class OpenRouterClientTests: XCTestCase {
         XCTAssertTrue(result.isEmpty)
     }
 
+    func test_recentActivityDoesNotSendDateFilter() async throws {
+        TestURLProtocol.requestHandler = { request in
+            XCTAssertNil(request.url?.query)
+            return (HTTPURLResponse(
+                url: try XCTUnwrap(request.url),
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!, Data("{\"data\":[]}".utf8))
+        }
+
+        let client = OpenRouterClient(session: makeTestSession())
+        let result = try await client.recentActivity(apiKey: "test-key")
+
+        XCTAssertTrue(result.isEmpty)
+    }
+
     func test_decodesActivityRows() async throws {
         let body = """
         {"data":[{"date":"2026-08-17","model":"openai/gpt-5","provider_name":"OpenAI","usage":0.015,"requests":1,"prompt_tokens":10,"completion_tokens":20}]}

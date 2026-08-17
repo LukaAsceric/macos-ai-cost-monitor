@@ -53,7 +53,9 @@ public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
         guard var components = URLComponents(url: baseURL.appendingPathComponent("activity"), resolvingAgainstBaseURL: false) else {
             throw OpenRouterClientError.invalidResponse
         }
-        components.queryItems = [URLQueryItem(name: "date", value: date)]
+        if !date.isEmpty {
+            components.queryItems = [URLQueryItem(name: "date", value: date)]
+        }
         guard let url = components.url else {
             throw OpenRouterClientError.invalidResponse
         }
@@ -101,6 +103,10 @@ public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
             }
             throw OpenRouterClientError.network
         }
+    }
+
+    public func recentActivity(apiKey: String) async throws -> [ActivityItem] {
+        try await activity(for: "", apiKey: apiKey)
     }
 
     private static func extractErrorMessage(from data: Data) -> String? {

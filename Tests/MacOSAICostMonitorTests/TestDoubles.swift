@@ -98,6 +98,10 @@ final actor BlockingUsageProvider: UsageProvider {
     private var releaseWaiters: [CheckedContinuation<Void, Never>] = []
 
     func activity(for date: String, apiKey: String) async throws -> [ActivityItem] {
+        try await recentActivity(apiKey: apiKey)
+    }
+
+    func recentActivity(apiKey: String) async throws -> [ActivityItem] {
         calls += 1
         called = true
         let pendingCallWaiters = callWaiters

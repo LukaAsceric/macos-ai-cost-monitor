@@ -86,7 +86,7 @@ public final class CostMonitorModel: ObservableObject {
         self.dateProvider = dateProvider
         self.now = now
 
-        if let cached = cache.load(), cached.cost.date == dateProvider.currentDateString() {
+        if let cached = cache.load() {
             lastUpdated = cached.fetchedAt
             if cached.hasActivity {
                 state = .loaded(cached.cost, fetchedAt: cached.fetchedAt, stale: true)
@@ -144,8 +144,7 @@ public final class CostMonitorModel: ObservableObject {
     }
 
     private func performRefresh() async -> Bool {
-        let date = dateProvider.currentDateString()
-        let previous = state.dailyCost.flatMap { $0.date == date ? $0 : nil }
+        let previous = state.dailyCost
         let key: String?
 
         do {
@@ -169,7 +168,8 @@ public final class CostMonitorModel: ObservableObject {
 
         state = .loading(previous: previous)
         do {
-            let items = try await provider.activity(for: date, apiKey: key)
+            let items = try await provider.recentActivity(apiKey: key)
+            let date = items.map(\.date).max() ?? dateProvider.currentDateString()
             let matchingItems = items.filter { $0.date == date }
             let cost = ActivityAggregator.aggregate(matchingItems, for: date)
             let fetchedAt = now()

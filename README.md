@@ -4,7 +4,7 @@ A native macOS menu-bar application for monitoring AI service spend, starting wi
 
 ## MVP status
 
-The first implementation targets OpenRouter account activity and displays the spend reported for the requested **UTC date**. The menu-bar value is account-level OpenRouter usage, not a locally inferred estimate.
+The first implementation targets OpenRouter account activity and displays the spend reported for the newest **completed UTC date** currently returned by OpenRouter. The menu-bar value is account-level OpenRouter usage, not a locally inferred estimate.
 
 ### OpenRouter limitation
 
@@ -14,7 +14,7 @@ The OpenRouter activity API is:
 GET https://openrouter.ai/api/v1/activity?date=YYYY-MM-DD
 ```
 
-It requires an OpenRouter **management API key** with activity access and exposes the last 30 completed UTC days. The application requests the latest completed UTC day rather than the in-progress day, because OpenRouter may reject or omit current-day activity. Exact real-time local-day totals require request instrumentation or a future event-level API and are not claimed by this MVP.
+It requires an OpenRouter **management API key** with activity access and exposes the last 30 completed UTC days. The application requests that recent window without a date filter, then selects the newest date actually returned. Exact real-time local-day totals require request instrumentation or a future event-level API and are not claimed by this MVP.
 
 The headline total sums each activity row's `usage` field. `byok_usage_inference` is retained as a separate estimated BYOK amount and is not added to the headline total.
 

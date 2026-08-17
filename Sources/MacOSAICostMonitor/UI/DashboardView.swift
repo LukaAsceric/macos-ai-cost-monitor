@@ -54,13 +54,20 @@ public struct DashboardView: View {
                 emptyState("Refreshing usage…", systemImage: "arrow.clockwise")
             }
         case .loaded(let cost, _, let stale):
-            costContent(cost, stale: stale)
+            VStack(alignment: .leading, spacing: 8) {
+                if stale {
+                    Label("Showing the latest cached completed UTC day.", systemImage: "clock.arrow.circlepath")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                costContent(cost, stale: stale)
+            }
         case .noData(let date, let fetchedAt, let previous):
             VStack(alignment: .leading, spacing: 8) {
                 if let previous {
                     costContent(previous, stale: true)
                 }
-                emptyState("OpenRouter has not published activity for this UTC day yet.", systemImage: "clock")
+                emptyState("No activity is available for this completed UTC day.", systemImage: "clock")
                 Text("Requested date: \(date) UTC")
                     .font(.caption)
                     .foregroundStyle(.secondary)
