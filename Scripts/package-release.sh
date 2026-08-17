@@ -21,7 +21,9 @@ build_architecture() {
     local scratch_path="$SCRATCH_ROOT/$architecture"
     local bin_path
 
+    swift build -c release --arch "$architecture" --scratch-path "$scratch_path"
     bin_path="$(swift build -c release --arch "$architecture" --scratch-path "$scratch_path" --show-bin-path)"
+    test -x "$bin_path/$APP_NAME"
     cp "$bin_path/$APP_NAME" "$DIST_DIR/$APP_NAME-$architecture"
 }
 
