@@ -125,7 +125,7 @@ public enum ReportTimeRange: String, CaseIterable, Codable, Sendable, Identifiab
         self == .last30CompletedDays ? .last30Days : .latestAvailableDay
     }
 
-    public enum Group: String, CaseIterable, Identifiable {
+    public enum Group: String, CaseIterable, Identifiable, Hashable {
         case relative
         case calendar
         case supported
