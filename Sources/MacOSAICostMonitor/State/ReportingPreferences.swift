@@ -106,7 +106,7 @@ public enum ReportTimeRange: String, CaseIterable, Codable, Sendable, Identifiab
         case .past30Minutes: return "30m"
         case .pastHour: return "1h"
         case .past3Hours: return "3h"
-        case .past24Hours, .today: return "1d"
+        case .past24Hours, .today, .yesterday: return "1d"
         case .past48Hours: return "2d"
         case .pastWeek, .thisWeek, .previousWeek: return "1w"
         case .pastMonth, .thisMonth, .previousMonth: return "1mo"

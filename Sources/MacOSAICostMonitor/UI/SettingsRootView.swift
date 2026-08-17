@@ -105,7 +105,7 @@ private struct ProviderSettingsSection: View {
                 ForEach(ProviderOption.allCases) { provider in
                     HStack {
                         Image(systemName: provider == preferences.provider ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(provider == preferences.provider ? .accent : .secondary)
+                            .foregroundStyle(provider == preferences.provider ? Color.accentColor : Color.secondary)
                         Text(provider.title)
                         Spacer()
                         if provider.isEnabled {
@@ -180,7 +180,7 @@ private struct ReportingSettingsSection: View {
     var body: some View {
         SettingsSection(title: "Reporting", subtitle: "Control the range, cadence, precision, and diagnostic detail.") {
             SettingsCard(title: "Time range") {
-                ForEach(ReportTimeRange.Group.allCases) { group in
+                ForEach(ReportTimeRange.Group.allCases, id: \.self) { group in
                     Text(group.title)
                         .font(.subheadline.weight(.medium))
                         .padding(.top, group == .relative ? 0 : 8)

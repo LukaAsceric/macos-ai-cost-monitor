@@ -49,7 +49,11 @@ public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
         self.diagnosticLogStore = diagnosticLogStore
     }
 
-    public func activity(for date: String, apiKey: String, captureRawResponse: Bool = false) async throws -> [ActivityItem] {
+    public func activity(for date: String, apiKey: String) async throws -> [ActivityItem] {
+        try await activity(for: date, apiKey: apiKey, captureRawResponse: false)
+    }
+
+    private func activity(for date: String, apiKey: String, captureRawResponse: Bool) async throws -> [ActivityItem] {
         guard var components = URLComponents(url: baseURL.appendingPathComponent("activity"), resolvingAgainstBaseURL: false) else {
             throw OpenRouterClientError.invalidResponse
         }
@@ -109,7 +113,7 @@ public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
     }
 
     public func recentActivity(apiKey: String) async throws -> [ActivityItem] {
-        try await activity(for: "", apiKey: apiKey)
+        try await activity(for: "", apiKey: apiKey, captureRawResponse: false)
     }
 
     public func recentActivity(apiKey: String, captureRawResponse: Bool) async throws -> [ActivityItem] {
