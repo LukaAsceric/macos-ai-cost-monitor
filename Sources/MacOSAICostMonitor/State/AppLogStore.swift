@@ -70,7 +70,7 @@ public final class AppLogStore: ObservableObject {
         redactForExport(message)
     }
 
-    public static func redactForExport(_ message: String) -> String {
+    nonisolated public static func redactForExport(_ message: String) -> String {
         var result = message
         let patterns = [
             "(?i)bearer\\s+[^\\s]+",
