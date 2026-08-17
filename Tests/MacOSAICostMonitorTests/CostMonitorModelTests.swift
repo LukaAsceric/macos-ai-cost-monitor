@@ -3,6 +3,19 @@ import XCTest
 @testable import MacOSAICostMonitor
 
 final class CostMonitorModelTests: XCTestCase {
+    func test_reportingPreferencesPersistAndClampDecimals() {
+        let suiteName = "CostMonitorModelTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let preferences = ReportingPreferences(defaults: defaults)
+        preferences.decimalPlaces = 12
+        preferences.reportRange = .last30Days
+
+        XCTAssertEqual(preferences.decimalPlaces, 8)
+        XCTAssertEqual(defaults.string(forKey: "reportRange"), ReportRange.last30Days.rawValue)
+    }
+
     func test_systemDateProviderRequestsLatestCompletedUtcDate() {
         let provider = SystemUTCDateProvider(now: { Date(timeIntervalSince1970: 86_400) })
 

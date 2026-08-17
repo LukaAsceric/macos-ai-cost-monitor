@@ -76,7 +76,14 @@ public struct DailyCost: Codable, Sendable, Equatable {
 
 public enum ActivityAggregator {
     public static func aggregate(_ items: [ActivityItem], for date: String) -> DailyCost {
-        let matching = items.filter { $0.date == date }
+        aggregateRows(items.filter { $0.date == date }, reportDate: date)
+    }
+
+    public static func aggregateAll(_ items: [ActivityItem], reportDate: String) -> DailyCost {
+        aggregateRows(items, reportDate: reportDate)
+    }
+
+    private static func aggregateRows(_ matching: [ActivityItem], reportDate: String) -> DailyCost {
         var grouped: [String: CostBreakdown] = [:]
         var usage = Decimal.zero
         var byok = Decimal.zero
@@ -115,7 +122,7 @@ public enum ActivityAggregator {
         }
 
         return DailyCost(
-            date: date,
+            date: reportDate,
             usage: usage,
             byokUsageInference: byok,
             requests: requests,

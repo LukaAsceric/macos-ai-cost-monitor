@@ -3,11 +3,13 @@ import SwiftUI
 @MainActor
 public struct DashboardView: View {
     @ObservedObject private var model: CostMonitorModel
+    @ObservedObject private var preferences: ReportingPreferences
     private let onQuit: () -> Void
     @State private var showSettings = false
 
     public init(model: CostMonitorModel, onQuit: @escaping () -> Void) {
         self.model = model
+        self.preferences = model.preferences
         self.onQuit = onQuit
     }
 
@@ -32,6 +34,9 @@ public struct DashboardView: View {
                     .font(.headline)
                 Text(dateLabel)
                     .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("OpenRouter time basis: UTC")
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -88,7 +93,7 @@ public struct DashboardView: View {
     private func costContent(_ cost: DailyCost, stale: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
-                Text(CostFormatStyle.headline(cost.usage))
+                Text(CostFormatStyle.headline(displayedUsage(for: cost), maximumFractionDigits: preferences.decimalPlaces))
                     .font(.system(size: 32, weight: .semibold, design: .rounded))
                 if stale {
                     Text("stale")
@@ -105,7 +110,7 @@ public struct DashboardView: View {
                 metric("Completion", value: CostFormatStyle.tokens(cost.completionTokens))
                 metric("Reasoning", value: CostFormatStyle.tokens(cost.reasoningTokens))
             }
-            metric("Estimated BYOK", value: CostFormatStyle.headline(cost.byokUsageInference))
+            metric("Estimated BYOK", value: CostFormatStyle.headline(cost.byokUsageInference, maximumFractionDigits: preferences.decimalPlaces))
             if !cost.breakdowns.isEmpty {
                 Divider()
                 Text("By model")
@@ -120,7 +125,7 @@ public struct DashboardView: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        Text(CostFormatStyle.headline(breakdown.usage))
+                        Text(CostFormatStyle.headline(breakdown.usage, maximumFractionDigits: preferences.decimalPlaces))
                             .font(.caption.monospacedDigit())
                     }
                 }
@@ -147,6 +152,12 @@ public struct DashboardView: View {
         }
     }
 
+    private func displayedUsage(for cost: DailyCost) -> Decimal {
+        model.preferences.includeByokInHeadline
+            ? cost.usage + cost.byokUsageInference
+            : cost.usage
+    }
+
     private func emptyState(_ message: String, systemImage: String) -> some View {
         Label(message, systemImage: systemImage)
             .font(.callout)
@@ -171,16 +182,20 @@ public struct DashboardView: View {
     private var dateLabel: String {
         switch model.state {
         case .loaded(let cost, _, _):
-            return "\(cost.date) UTC"
+            return reportDateLabel(cost.date)
         case .loading(let previous):
-            return previous.map { "\($0.date) UTC" } ?? "Today · UTC"
+            return previous.map { reportDateLabel($0.date) } ?? "Latest available · UTC"
         case .noData(let date, _, _):
-            return "\(date) UTC"
+            return reportDateLabel(date)
         case .failed(_, let previous, _):
-            return previous.map { "\($0.date) UTC" } ?? "Today · UTC"
+            return previous.map { reportDateLabel($0.date) } ?? "Latest available · UTC"
         case .notConfigured:
-            return "Today · UTC"
+            return "Latest available · UTC"
         }
+    }
+
+    private func reportDateLabel(_ date: String) -> String {
+        date == "Last 30 completed UTC days" ? date : "\(date) UTC"
     }
 
     private var isRefreshing: Bool {

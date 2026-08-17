@@ -15,7 +15,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor [weak self] in
             guard let self else { return }
             _ = await self.model.refresh()
-            self.model.startPolling()
+            self.model.startPolling(interval: self.model.preferences.refreshInterval)
         }
     }
 

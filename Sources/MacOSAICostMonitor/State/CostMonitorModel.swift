@@ -70,6 +70,7 @@ public final class CostMonitorModel: ObservableObject {
     private let cache: any CostCache
     private let dateProvider: any UTCDateProviding
     private let now: @Sendable () -> Date
+    public let preferences: ReportingPreferences
     private var refreshTask: Task<Bool, Never>?
     private var schedulerTask: Task<Void, Never>?
 
@@ -78,13 +79,15 @@ public final class CostMonitorModel: ObservableObject {
         secretStore: any SecretStore,
         cache: any CostCache,
         dateProvider: any UTCDateProviding = SystemUTCDateProvider(),
-        now: @escaping @Sendable () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() },
+        preferences: ReportingPreferences = ReportingPreferences()
     ) {
         self.provider = provider
         self.secretStore = secretStore
         self.cache = cache
         self.dateProvider = dateProvider
         self.now = now
+        self.preferences = preferences
 
         if let cached = cache.load() {
             lastUpdated = cached.fetchedAt
@@ -138,6 +141,14 @@ public final class CostMonitorModel: ObservableObject {
         schedulerTask = nil
     }
 
+    public func applyPreferenceChanges() {
+        if schedulerTask != nil {
+            stopPolling()
+            startPolling(interval: preferences.refreshInterval)
+        }
+        Task { _ = await refresh() }
+    }
+
     deinit {
         refreshTask?.cancel()
         schedulerTask?.cancel()
@@ -170,13 +181,22 @@ public final class CostMonitorModel: ObservableObject {
         do {
             let items = try await provider.recentActivity(apiKey: key)
             let date = items.map(\.date).max() ?? dateProvider.currentDateString()
-            let matchingItems = items.filter { $0.date == date }
-            let cost = ActivityAggregator.aggregate(matchingItems, for: date)
+            let matchingItems: [ActivityItem]
+            switch preferences.reportRange {
+            case .latestAvailableDay:
+                matchingItems = items.filter { $0.date == date }
+            case .last30Days:
+                matchingItems = items
+            }
+            let reportDate = preferences.reportRange == .latestAvailableDay ? date : "Last 30 completed UTC days"
+            let cost = preferences.reportRange == .last30Days
+                ? ActivityAggregator.aggregateAll(matchingItems, reportDate: reportDate)
+                : ActivityAggregator.aggregate(matchingItems, for: reportDate)
             let fetchedAt = now()
             lastUpdated = fetchedAt
 
             if matchingItems.isEmpty {
-                state = .noData(date: date, fetchedAt: fetchedAt, previous: previous)
+                state = .noData(date: reportDate, fetchedAt: fetchedAt, previous: previous)
                 do {
                     try cache.save(CachedUsage(cost: cost, fetchedAt: fetchedAt, hasActivity: false, previousCost: previous))
                 } catch {

@@ -8,6 +8,7 @@ public final class StatusBarController: NSObject {
     private let statusItem: NSStatusItem
     private let popover = NSPopover()
     private var stateSubscription: AnyCancellable?
+    private var preferencesSubscription: AnyCancellable?
     private var globalMouseMonitor: Any?
     private var localMouseMonitor: Any?
 
@@ -21,6 +22,13 @@ public final class StatusBarController: NSObject {
         popover.behavior = .transient
         popover.animates = true
         stateSubscription = model.$state
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                Task { @MainActor in
+                    self?.updateTitle()
+                }
+            }
+        preferencesSubscription = model.preferences.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 Task { @MainActor in
@@ -89,16 +97,16 @@ public final class StatusBarController: NSObject {
         guard let button = statusItem.button else { return }
         switch model.state {
         case .loaded(let cost, _, let stale):
-            let value = CostFormatStyle.headline(cost.usage)
+            let value = CostFormatStyle.headline(displayedUsage(for: cost), maximumFractionDigits: model.preferences.decimalPlaces)
             button.title = value
             button.toolTip = "OpenRouter cost for \(cost.date) UTC: \(value)"
             button.setAccessibilityLabel("OpenRouter cost for \(cost.date) UTC: \(value)\(stale ? ", stale" : "")")
         case .loading(let previous):
-            button.title = previous.map { CostFormatStyle.headline($0.usage) } ?? "…"
+            button.title = previous.map { CostFormatStyle.headline(displayedUsage(for: $0), maximumFractionDigits: model.preferences.decimalPlaces) } ?? "…"
             button.toolTip = "Refreshing OpenRouter usage"
             button.setAccessibilityLabel("Refreshing OpenRouter usage")
         case .failed(_, let previous, _):
-            button.title = previous.map { CostFormatStyle.headline($0.usage) } ?? "—"
+            button.title = previous.map { CostFormatStyle.headline(displayedUsage(for: $0), maximumFractionDigits: model.preferences.decimalPlaces) } ?? "—"
             button.toolTip = "OpenRouter usage is stale or unavailable"
             button.setAccessibilityLabel("OpenRouter usage is stale or unavailable")
         case .notConfigured:
@@ -106,10 +114,16 @@ public final class StatusBarController: NSObject {
             button.toolTip = "OpenRouter usage is not configured"
             button.setAccessibilityLabel("OpenRouter usage is not configured")
         case .noData(let date, _, let previous):
-            let value = previous.map { CostFormatStyle.headline($0.usage) } ?? "—"
+            let value = previous.map { CostFormatStyle.headline(displayedUsage(for: $0), maximumFractionDigits: model.preferences.decimalPlaces) } ?? "—"
             button.title = value
             button.toolTip = "No OpenRouter activity published for \(date) UTC"
             button.setAccessibilityLabel("No OpenRouter activity published for \(date) UTC; showing last known value \(value)")
         }
+    }
+
+    private func displayedUsage(for cost: DailyCost) -> Decimal {
+        model.preferences.includeByokInHeadline
+            ? cost.usage + cost.byokUsageInference
+            : cost.usage
     }
 }

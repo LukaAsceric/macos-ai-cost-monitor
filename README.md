@@ -18,6 +18,18 @@ It requires an OpenRouter **management API key** with activity access and expose
 
 The headline total sums each activity row's `usage` field. `byok_usage_inference` is retained as a separate estimated BYOK amount and is not added to the headline total.
 
+## Reporting settings
+
+The Settings panel supports:
+
+- **Latest available day**: show the newest completed UTC day returned by OpenRouter.
+- **Last 30 completed days**: aggregate the full activity window returned by OpenRouter.
+- **Refresh interval**: 1, 5, 15, or 30 minutes.
+- **Cost decimals**: choose 2–8 displayed fractional digits; the default is 6 so small costs remain visible.
+- **Include estimated BYOK in headline**: optionally add OpenRouter's estimated BYOK amount to the menu-bar headline. It remains separately labeled in the details.
+
+The service's reporting dates are UTC because that is the API's accounting basis. A local timezone selector would change presentation labels but cannot convert the API's completed UTC-day buckets into exact local-day totals.
+
 ## Requirements
 
 - macOS 13 Ventura or later
