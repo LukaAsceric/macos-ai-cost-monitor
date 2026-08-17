@@ -64,7 +64,9 @@ public struct SettingsRootView: View {
     private var detail: some View {
         switch selection ?? .general {
         case .general:
-            GeneralSettingsSection(model: model)
+            GeneralSettingsSection(model: model, logStore: logStore) { section in
+                selection = section
+            }
         case .provider:
             ProviderSettingsSection(model: model)
         case .reporting:
@@ -82,18 +84,109 @@ public struct SettingsRootView: View {
 @MainActor
 private struct GeneralSettingsSection: View {
     @ObservedObject var model: CostMonitorModel
+    @ObservedObject var logStore: AppLogStore
+    let onNavigate: (SettingsRootView.Section) -> Void
 
     var body: some View {
-        SettingsSection(title: "General", subtitle: "Application behavior and diagnostics.") {
-            SettingsCard(title: "Status") {
-                LabeledContent("Provider", value: model.preferences.provider.title)
-                LabeledContent("Time basis", value: "UTC completed days")
-                LabeledContent("Cache", value: "Non-sensitive usage only")
-                Text("The menu-bar popover stays compact. Use the OpenRouter and Reporting sections to change configuration, and Console to inspect sanitized diagnostics.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+        SettingsSection(title: "Overview", subtitle: "A live snapshot of the monitor, not another configuration page.") {
+            statusCard
+            reportCard
+            activityCard
+            quickActionsCard
+        }
+    }
+
+    private var statusCard: some View {
+        SettingsCard(title: "Connection") {
+            HStack(spacing: 12) {
+                Image(systemName: statusIcon)
+                    .font(.title2)
+                    .foregroundStyle(statusColor)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(model.connectionStatusTitle)
+                        .font(.headline)
+                    Text(statusDetail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            Divider()
+            LabeledContent("Provider", value: model.preferences.provider.title)
+            LabeledContent("Management key", value: model.managementKeyStatus.title)
+        }
+    }
+
+    private var reportCard: some View {
+        SettingsCard(title: "Current report") {
+            LabeledContent("Range", value: model.currentReportTitle)
+            LabeledContent("Timezone", value: model.preferences.displayTimeZone.identifier)
+            LabeledContent("Refresh", value: model.preferences.refreshIntervalLabel)
+            LabeledContent("Last updated", value: lastUpdatedText)
+            if let cost = model.state.dailyCost {
+                LabeledContent("Current spend", value: CostFormatStyle.headline(cost.usage, maximumFractionDigits: model.preferences.decimalPlaces))
             }
         }
+    }
+
+    private var activityCard: some View {
+        SettingsCard(title: "Activity") {
+            LabeledContent("Console entries", value: "\(logStore.entries.count) / \(AppLogStore.defaultCapacity)")
+            LabeledContent("Cache", value: "Usage only · no credentials")
+            LabeledContent("Raw HTTP capture", value: model.preferences.captureRawHTTPResponses ? "Enabled" : "Off")
+            if model.budgetExceeded {
+                Label("Budget threshold reached", systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.orange)
+            }
+        }
+    }
+
+    private var quickActionsCard: some View {
+        SettingsCard(title: "Quick actions") {
+            HStack {
+                Button("Refresh now") {
+                    Task { _ = await model.refresh() }
+                }
+                Button("Provider") { onNavigate(.provider) }
+                Button("Reporting") { onNavigate(.reporting) }
+                Button("Alerts") { onNavigate(.alerts) }
+                Button("Console") { onNavigate(.console) }
+            }
+            .buttonStyle(.bordered)
+            Text("Secrets stay in Keychain. Use Console only when you need to understand a refresh or export a redacted diagnostic log.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var statusIcon: String {
+        if model.managementKeyStatus == .missing { return "key.slash" }
+        if case .failed = model.state { return "exclamationmark.triangle.fill" }
+        if case .loading = model.state { return "arrow.triangle.2.circlepath" }
+        return "checkmark.circle.fill"
+    }
+
+    private var statusColor: Color {
+        if model.managementKeyStatus == .missing { return .orange }
+        if case .failed = model.state { return .red }
+        if case .loading = model.state { return .blue }
+        return .green
+    }
+
+    private var statusDetail: String {
+        switch model.state {
+        case .notConfigured: return "Add a management key in Provider to start querying analytics."
+        case .loading: return "Querying OpenRouter analytics…"
+        case .loaded: return "Analytics query completed successfully."
+        case .noData: return "The query completed, but no rows matched this range."
+        case .failed(let message, _, _): return message
+        }
+    }
+
+    private var lastUpdatedText: String {
+        guard let date = model.lastUpdated else { return "Never" }
+        return date.formatted(date: .abbreviated, time: .shortened)
     }
 }
 

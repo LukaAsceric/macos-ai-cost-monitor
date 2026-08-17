@@ -43,12 +43,14 @@ is the same shape this app sends. `Today` in GMT+2 therefore starts at `22:00Z` 
 
 The retained settings window has:
 
-- **General**
+- **General / Overview** — live connection state, management-key status, current report, last refresh, cache/console activity, and quick actions
 - **Provider** — OpenRouter is enabled; other providers remain listed as coming soon
 - **Reporting** — ranges, timezone, decimals, detail toggles, raw HTTP capture
 - **Alerts** — local budget threshold and optional macOS notification
 - **Release** — what local signing can and cannot do
 - **Console** — filter, copy, clear, sanitized log export
+
+General is intentionally an operational overview rather than a second settings form. Configuration lives in Provider, Reporting, and Alerts; General tells you what the monitor is doing right now and provides shortcuts to those areas.
 
 The window can only be closed. It cannot be minimized or maximized.
 

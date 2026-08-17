@@ -4,6 +4,22 @@ import XCTest
 
 final class CostMonitorModelTests: XCTestCase {
     @MainActor
+    func test_managementKeyStatusReflectsMissingKeyWithoutExposingValue() async {
+        let model = CostMonitorModel(
+            provider: FakeUsageProvider(items: []),
+            secretStore: InMemorySecretStore(),
+            cache: InMemoryCostCache(),
+            dateProvider: FixedUTCDateProvider(date: "2026-08-17")
+        )
+
+        XCTAssertEqual(model.managementKeyStatus, .unknown)
+        await model.refresh()
+
+        XCTAssertEqual(model.managementKeyStatus, .missing)
+        XCTAssertFalse(String(describing: model.managementKeyStatus).contains("test-key"))
+    }
+
+    @MainActor
     func test_refreshLogsSanitizedDiagnosticSummary() async {
         let logs = AppLogStore()
         let model = CostMonitorModel(

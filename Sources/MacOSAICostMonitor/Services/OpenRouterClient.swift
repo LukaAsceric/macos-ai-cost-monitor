@@ -76,7 +76,7 @@ public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
                 throw OpenRouterClientError.invalidResponse
             }
             if captureRawResponse {
-                await logRawResponse(path: "/api/v1/activity", data: data, statusCode: httpResponse.statusCode)
+                await logRawResponse(method: "GET", path: "/api/v1/activity", data: data, statusCode: httpResponse.statusCode)
             }
             switch httpResponse.statusCode {
             case 200..<300:
@@ -169,12 +169,12 @@ public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
         }
     }
 
-    private func logRawResponse(path: String = "/api/v1/activity", data: Data, statusCode: Int) async {
+    private func logRawResponse(method: String = "POST", path: String = "/api/v1/activity", data: Data, statusCode: Int) async {
         let maxBytes = 64 * 1024
         let captured = data.prefix(maxBytes)
         let body = String(data: captured, encoding: .utf8) ?? "<non-UTF8 response>"
         let suffix = data.count > maxBytes ? "\n[truncated after \(maxBytes) bytes]" : ""
-        await diagnosticLogStore?.info("HTTP response POST \(path) status=\(statusCode) bytes=\(data.count)")
+        await diagnosticLogStore?.info("HTTP response \(method) \(path) status=\(statusCode) bytes=\(data.count)")
         await diagnosticLogStore?.debug("RAW HTTP RESPONSE BODY:\n\(body)\(suffix)")
     }
 

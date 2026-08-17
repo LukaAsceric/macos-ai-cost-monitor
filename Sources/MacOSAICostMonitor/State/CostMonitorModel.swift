@@ -1,6 +1,31 @@
 import Combine
 import Foundation
 
+public enum ManagementKeyStatus: String, Sendable, Equatable {
+    case unknown
+    case missing
+    case configured
+    case unavailable
+
+    public var title: String {
+        switch self {
+        case .unknown: return "Not checked"
+        case .missing: return "Not configured"
+        case .configured: return "Configured"
+        case .unavailable: return "Unavailable"
+        }
+    }
+
+    public var systemImage: String {
+        switch self {
+        case .unknown: return "questionmark.circle"
+        case .missing: return "key.slash"
+        case .configured: return "checkmark.shield"
+        case .unavailable: return "exclamationmark.triangle"
+        }
+    }
+}
+
 public enum MonitorState: Sendable, Equatable {
     case notConfigured
     case loading(previous: DailyCost?)
@@ -64,6 +89,21 @@ public struct SystemUTCDateProvider: UTCDateProviding {
 public final class CostMonitorModel: ObservableObject {
     @Published public private(set) var state: MonitorState = .notConfigured
     @Published public private(set) var lastUpdated: Date?
+    @Published public private(set) var managementKeyStatus: ManagementKeyStatus = .unknown
+    @Published public private(set) var lastRefreshSucceeded: Bool? = nil
+
+    public var currentReportTitle: String {
+        preferences.timeRange.reportLabel
+    }
+
+    public var connectionStatusTitle: String {
+        switch state {
+        case .failed: return "Needs attention"
+        case .loading: return "Refreshing"
+        case .notConfigured: return "Not configured"
+        case .loaded, .noData: return "Connected"
+        }
+    }
     @Published public private(set) var series: [CostSeriesPoint] = []
     @Published public private(set) var budgetExceeded = false
     @Published public private(set) var lastLogExportURL: URL?
@@ -185,15 +225,21 @@ public final class CostMonitorModel: ObservableObject {
         }
 
         if let managementKeyErrorMessage {
+            managementKeyStatus = .unavailable
+            lastRefreshSucceeded = false
             state = .failed(message: managementKeyErrorMessage, previous: previous, staleSince: lastUpdated ?? now())
             return false
         }
 
         guard let key = managementKey, !key.isEmpty else {
+            managementKeyStatus = .missing
+            lastRefreshSucceeded = nil
             state = .notConfigured
             return true
         }
 
+        managementKeyStatus = .configured
+        lastRefreshSucceeded = nil
         state = .loading(previous: previous)
         logStore.info("Querying OpenRouter analytics")
         do {
@@ -221,6 +267,7 @@ public final class CostMonitorModel: ObservableObject {
             lastUpdated = fetchedAt
             evaluateBudget(for: cost)
 
+            lastRefreshSucceeded = true
             if result.rows.isEmpty {
                 state = .noData(date: reportDate, fetchedAt: fetchedAt, previous: previous)
                 do {
@@ -243,10 +290,12 @@ public final class CostMonitorModel: ObservableObject {
         } catch is CancellationError {
             return false
         } catch let error as OpenRouterClientError {
+            lastRefreshSucceeded = false
             logStore.error("OpenRouter request failed: \(error.userMessage)")
             state = .failed(message: error.userMessage, previous: previous, staleSince: lastUpdated ?? now())
             return false
         } catch {
+            lastRefreshSucceeded = false
             logStore.error("OpenRouter request failed: network or decoding error")
             state = .failed(
                 message: "OpenRouter could not be reached. Showing the last known value.",
