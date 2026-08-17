@@ -265,6 +265,22 @@ final class CostMonitorModelTests: XCTestCase {
         XCTAssertEqual(value, previous)
         XCTAssertEqual(staleSince, Date(timeIntervalSince1970: 10))
     }
+
+    @MainActor
+    func test_exportWritesRedactedFile() async throws {
+        let store = AppLogStore()
+        store.info("token=secret-value")
+        let model = CostMonitorModel(
+            provider: FakeUsageProvider(),
+            secretStore: InMemorySecretStore(),
+            cache: InMemoryCostCache(),
+            logStore: store
+        )
+        let url = try model.exportLogs()
+        let text = try String(contentsOf: url)
+        XCTAssertFalse(text.contains("secret-value"))
+        XCTAssertTrue(text.contains("[REDACTED]"))
+    }
 }
 
 private final class FakeUsageProvider: UsageProvider, @unchecked Sendable {
