@@ -439,8 +439,9 @@ public final class ReportingPreferences: ObservableObject {
         includeByokInHeadline = defaults.object(forKey: Keys.includeByok) as? Bool ?? false
         captureRawHTTPResponses = defaults.object(forKey: Keys.captureRawHTTPResponses) as? Bool ?? false
         timeZoneIdentifier = defaults.string(forKey: Keys.timeZoneIdentifier) ?? TimeZone.current.identifier
-        customEnd = defaults.object(forKey: Keys.customEnd) as? Date ?? Date()
-        customStart = defaults.object(forKey: Keys.customStart) as? Date ?? customEnd.addingTimeInterval(-86_400)
+        let resolvedCustomEnd = defaults.object(forKey: Keys.customEnd) as? Date ?? Date()
+        customEnd = resolvedCustomEnd
+        customStart = defaults.object(forKey: Keys.customStart) as? Date ?? resolvedCustomEnd.addingTimeInterval(-86_400)
         budgetEnabled = defaults.object(forKey: Keys.budgetEnabled) as? Bool ?? false
         budgetAmount = defaults.object(forKey: Keys.budgetAmount) as? Double ?? 5
         notifyOnBudget = defaults.object(forKey: Keys.notifyOnBudget) as? Bool ?? true
