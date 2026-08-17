@@ -177,40 +177,26 @@ private struct ReportingSettingsSection: View {
         self.preferences = model.preferences
     }
 
+    private func applyTimeRange(_ range: ReportTimeRange) {
+        guard range.isSupported else { return }
+        preferences.timeRange = range
+        model.applyPreferenceChanges()
+    }
+
     var body: some View {
         SettingsSection(title: "Reporting", subtitle: "Control the range, cadence, precision, and diagnostic detail.") {
             SettingsCard(title: "Time range") {
-                ForEach(0..<ReportTimeRange.Group.allCases.count, id: \.self) { groupIndex in
-                    let group = ReportTimeRange.Group.allCases[groupIndex]
-                    Text(group.title)
-                        .font(.subheadline.weight(.medium))
-                        .padding(.top, group == .relative ? 0 : 8)
-                    ForEach(ReportTimeRange.options(in: group), id: \.rawValue) { range in
-                        HStack {
-                            Text(range.badge)
-                                .font(.caption2.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                                .frame(width: 34, alignment: .leading)
-                            Text(range.title)
-                            Spacer()
-                            if !range.isSupported {
-                                Text("Not available")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                            } else if preferences.timeRange == range {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(.accent)
-                            }
-                        }
-                        .opacity(range.isSupported ? 1 : 0.45)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            guard range.isSupported else { return }
-                            preferences.timeRange = range
-                            model.applyPreferenceChanges()
-                        }
-                    }
-                }
+                TimeRangeGroupView(title: "Relative ranges", ranges: [
+                    .past15Minutes, .past30Minutes, .pastHour, .past3Hours,
+                    .past24Hours, .past48Hours, .pastWeek, .pastMonth, .pastYear
+                ], preferences: preferences, onSelect: applyTimeRange)
+                TimeRangeGroupView(title: "Calendar ranges", ranges: [
+                    .today, .yesterday, .thisWeek, .previousWeek,
+                    .thisMonth, .previousMonth, .thisYear, .previousYear, .custom
+                ], preferences: preferences, onSelect: applyTimeRange)
+                TimeRangeGroupView(title: "Available from OpenRouter", ranges: [
+                    .latestAvailableDay, .last30CompletedDays
+                ], preferences: preferences, onSelect: applyTimeRange)
                 Text("OpenRouter currently exposes completed UTC-day buckets. Minute/hour, local-calendar, and custom ranges are shown for orientation but remain disabled until a provider API can support them accurately.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -238,6 +224,41 @@ private struct ReportingSettingsSection: View {
             .onChange(of: preferences.refreshInterval) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.includeByokInHeadline) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.captureRawHTTPResponses) { _ in model.applyPreferenceChanges() }
+        }
+    }
+}
+
+@MainActor
+private struct TimeRangeGroupView: View {
+    let title: String
+    let ranges: [ReportTimeRange]
+    @ObservedObject var preferences: ReportingPreferences
+    let onSelect: (ReportTimeRange) -> Void
+
+    var body: some View {
+        Text(title)
+            .font(.subheadline.weight(.medium))
+            .padding(.top, 8)
+        ForEach(ranges, id: \.rawValue) { range in
+            HStack {
+                Text(range.badge)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(width: 34, alignment: .leading)
+                Text(range.title)
+                Spacer()
+                if !range.isSupported {
+                    Text("Not available")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                } else if preferences.timeRange == range {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
+            .opacity(range.isSupported ? 1 : 0.45)
+            .contentShape(Rectangle())
+            .onTapGesture { onSelect(range) }
         }
     }
 }
