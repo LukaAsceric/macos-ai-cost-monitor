@@ -41,12 +41,14 @@ public final class StatusBarController: NSObject {
         updateTitle()
     }
 
-    deinit {
+    public func shutdown() {
         if let globalMouseMonitor {
             NSEvent.removeMonitor(globalMouseMonitor)
+            self.globalMouseMonitor = nil
         }
         if let localMouseMonitor {
             NSEvent.removeMonitor(localMouseMonitor)
+            self.localMouseMonitor = nil
         }
     }
 

@@ -30,6 +30,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     public func applicationWillTerminate(_ notification: Notification) {
+        statusBarController?.shutdown()
         model.stopPolling()
     }
 

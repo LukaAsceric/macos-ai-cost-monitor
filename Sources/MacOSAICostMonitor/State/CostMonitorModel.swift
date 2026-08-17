@@ -163,11 +163,6 @@ public final class CostMonitorModel: ObservableObject {
         Task { _ = await refresh() }
     }
 
-    deinit {
-        refreshTask?.cancel()
-        schedulerTask?.cancel()
-    }
-
     private func performRefresh() async -> Bool {
         let previous = state.dailyCost
         if !didLoadManagementKey {
