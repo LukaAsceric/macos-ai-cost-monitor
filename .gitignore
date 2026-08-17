@@ -1,0 +1,22 @@
+.build/
+dist/
+.DS_Store
+*.xcodeproj/
+xcuserdata/
+
+# Local credentials and caches
+*.key
+*.token
+cache.json
+
+# macOS signing artifacts
+*.cer
+*.p12
+*.mobileprovision
+
+# SwiftPM generated files
+.swiftpm/
+Package.resolved
+
+# Local Hermes runtime metadata
+.hermes/cache/

@@ -1,0 +1,28 @@
+{
+  "data": [
+    {
+      "date": "2026-08-17",
+      "model": "openai/gpt-5",
+      "model_permaslug": "openai/gpt-5-2026-01-01",
+      "endpoint_id": "endpoint-1",
+      "provider_name": "OpenAI",
+      "usage": 0.015,
+      "byok_usage_inference": 0.002,
+      "requests": 5,
+      "prompt_tokens": 50,
+      "completion_tokens": 125,
+      "reasoning_tokens": 25
+    },
+    {
+      "date": "2026-08-17",
+      "model": "anthropic/claude-sonnet",
+      "model_permaslug": "anthropic/claude-sonnet-2026-01-01",
+      "endpoint_id": "endpoint-2",
+      "provider_name": "Anthropic",
+      "usage": 0.0042,
+      "requests": 2,
+      "prompt_tokens": 20,
+      "completion_tokens": 40
+    }
+  ]
+}
