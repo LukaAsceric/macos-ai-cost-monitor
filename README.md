@@ -51,6 +51,15 @@ bash Scripts/build-app.sh
 open dist/MacOSAICostMonitor.app
 ```
 
+Use the signed `.app` bundle for normal operation. `swift run` launches a development executable whose code identity can change after rebuilds; macOS may consequently ask for Keychain authorization again. For a stable local identity, build with an explicit signing identity:
+
+```bash
+CODESIGN_IDENTITY="Apple Development: Your Name (TEAMID)" bash Scripts/build-app.sh
+open dist/MacOSAICostMonitor.app
+```
+
+The app reads the management key once per launch and keeps it only in memory for subsequent refreshes. Keychain reads are non-interactive; if macOS requires authorization for an existing item, the app reports that requirement instead of triggering a password prompt from every refresh.
+
 The key is stored in the macOS Keychain. It is not written to UserDefaults, the usage cache, logs, or the application bundle.
 
 ## Setup
@@ -69,6 +78,8 @@ A regular inference key is not sufficient for the activity endpoint. If the requ
 - **403:** the key lacks management/activity permission.
 - **429:** OpenRouter rate-limited the request; the app will retry on its normal schedule.
 - **Network failure:** the last successful value may remain visible but is marked stale.
+- **Repeated Keychain prompts:** do not use `swift run` for normal operation. Build and launch `dist/MacOSAICostMonitor.app` so macOS sees a stable signed application identity. The app reads the key once per launch and uses non-interactive Keychain reads thereafter.
+- If an older `swift run` build owns the existing item, remove only the app's old item in Keychain Access (service `com.example.MacOSAICostMonitor`, account `openrouter-management-key`), then save the key again from the signed `.app`.
 - **No completed-day data:** OpenRouter has not published activity for the requested completed UTC day yet.
 
 ## Development note

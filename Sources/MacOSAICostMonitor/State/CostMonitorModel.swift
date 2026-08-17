@@ -73,6 +73,9 @@ public final class CostMonitorModel: ObservableObject {
     public let preferences: ReportingPreferences
     private var refreshTask: Task<Bool, Never>?
     private var schedulerTask: Task<Void, Never>?
+    private var managementKey: String?
+    private var didLoadManagementKey = false
+    private var managementKeyErrorMessage: String?
 
     public init(
         provider: any UsageProvider,
@@ -117,12 +120,18 @@ public final class CostMonitorModel: ObservableObject {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         try secretStore.save(trimmed)
+        managementKey = trimmed
+        didLoadManagementKey = true
+        managementKeyErrorMessage = nil
         state = .loading(previous: state.dailyCost)
         _ = await refresh()
     }
 
     public func deleteManagementKey() throws {
         try secretStore.delete()
+        managementKey = nil
+        didLoadManagementKey = true
+        managementKeyErrorMessage = nil
         state = .notConfigured
         lastUpdated = nil
     }
@@ -156,23 +165,24 @@ public final class CostMonitorModel: ObservableObject {
 
     private func performRefresh() async -> Bool {
         let previous = state.dailyCost
-        let key: String?
+        if !didLoadManagementKey {
+            do {
+                managementKey = try secretStore.read()
+                didLoadManagementKey = true
+                managementKeyErrorMessage = nil
+            } catch let error as KeychainStoreError {
+                managementKeyErrorMessage = error.userMessage
+            } catch {
+                managementKeyErrorMessage = "The OpenRouter key could not be read from Keychain."
+            }
+        }
 
-        do {
-            key = try secretStore.read()
-        } catch let error as KeychainStoreError {
-            state = .failed(message: error.userMessage, previous: previous, staleSince: lastUpdated ?? now())
-            return false
-        } catch {
-            state = .failed(
-                message: "The OpenRouter key could not be read from Keychain.",
-                previous: previous,
-                staleSince: lastUpdated ?? now()
-            )
+        if let managementKeyErrorMessage {
+            state = .failed(message: managementKeyErrorMessage, previous: previous, staleSince: lastUpdated ?? now())
             return false
         }
 
-        guard let key, !key.isEmpty else {
+        guard let key = managementKey, !key.isEmpty else {
             state = .notConfigured
             return true
         }

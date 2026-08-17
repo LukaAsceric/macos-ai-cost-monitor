@@ -3,6 +3,32 @@ import XCTest
 @testable import MacOSAICostMonitor
 
 final class CostMonitorModelTests: XCTestCase {
+    func test_refreshReadsSecretFromKeychainOnlyOncePerModelLifetime() async {
+        let secretStore = CountingSecretStore(value: "test-key")
+        let item = ActivityItem(
+            date: "2026-08-17",
+            model: "openai/gpt-5",
+            providerName: "OpenAI",
+            usage: Decimal(string: "0.015")!,
+            requests: 1,
+            promptTokens: 10,
+            completionTokens: 20
+        )
+        let model = await MainActor.run {
+            CostMonitorModel(
+                provider: FakeUsageProvider(items: [item]),
+                secretStore: secretStore,
+                cache: InMemoryCostCache(),
+                dateProvider: FixedUTCDateProvider(date: "2026-08-17")
+            )
+        }
+
+        await model.refresh()
+        await model.refresh()
+
+        XCTAssertEqual(secretStore.readCount(), 1)
+    }
+
     func test_reportingPreferencesPersistAndClampDecimals() {
         let suiteName = "CostMonitorModelTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

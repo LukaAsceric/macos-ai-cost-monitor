@@ -16,6 +16,7 @@ let package = Package(
             ],
             linkerSettings: [
                 .linkedFramework("AppKit"),
+                .linkedFramework("LocalAuthentication"),
                 .linkedFramework("Security")
             ]
         ),
@@ -26,6 +27,10 @@ let package = Package(
             resources: [.process("Fixtures")],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency")
+            ],
+            linkerSettings: [
+                .linkedFramework("LocalAuthentication"),
+                .linkedFramework("Security")
             ]
         )
     ]

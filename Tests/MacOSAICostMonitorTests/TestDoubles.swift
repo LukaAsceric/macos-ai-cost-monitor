@@ -66,6 +66,33 @@ final class InMemorySecretStore: SecretStore, @unchecked Sendable {
     }
 }
 
+final class CountingSecretStore: SecretStore, @unchecked Sendable {
+    private var value: String?
+    private var reads = 0
+    private let lock = NSLock()
+
+    init(value: String?) { self.value = value }
+
+    func read() throws -> String? {
+        lock.withLock {
+            reads += 1
+            return value
+        }
+    }
+
+    func save(_ value: String) throws {
+        lock.withLock { self.value = value }
+    }
+
+    func delete() throws {
+        lock.withLock { value = nil }
+    }
+
+    func readCount() -> Int {
+        lock.withLock { reads }
+    }
+}
+
 final class InMemoryCostCache: CostCache, @unchecked Sendable {
     private var value: CachedUsage?
     private let lock = NSLock()

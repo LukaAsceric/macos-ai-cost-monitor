@@ -18,7 +18,8 @@ if [[ -f "Resources/AppIcon.icns" ]]; then
 fi
 
 if command -v codesign >/dev/null 2>&1; then
-  codesign --force --deep --sign - "$APP_DIR"
+  SIGNING_IDENTITY="${CODESIGN_IDENTITY:--}"
+  codesign --force --deep --sign "$SIGNING_IDENTITY" "$APP_DIR"
 fi
 
 printf '%s\n' "$APP_DIR"

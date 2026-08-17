@@ -1,4 +1,6 @@
 import Foundation
+import LocalAuthentication
+import Security
 import XCTest
 @testable import MacOSAICostMonitor
 
@@ -16,5 +18,17 @@ final class KeychainStoreTests: XCTestCase {
     func test_keychainStoreUsesStableServiceAndAccount() {
         XCTAssertEqual(KeychainStore.service, "com.example.MacOSAICostMonitor")
         XCTAssertEqual(KeychainStore.account, "openrouter-management-key")
+    }
+
+    func test_readQueryDisallowsInteractiveAuthentication() {
+        let query = KeychainStore.readQueryForTesting(
+            service: KeychainStore.service,
+            account: KeychainStore.account
+        )
+        let context = query[kSecUseAuthenticationContext as String] as? LAContext
+
+        XCTAssertNotNil(context)
+        XCTAssertTrue(context?.interactionNotAllowed == true)
+        XCTAssertEqual(query[kSecUseAuthenticationUI as String] as? String, kSecUseAuthenticationUIFail as String)
     }
 }
