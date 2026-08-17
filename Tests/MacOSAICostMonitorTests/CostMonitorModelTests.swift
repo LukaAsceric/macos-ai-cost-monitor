@@ -47,6 +47,7 @@ final class CostMonitorModelTests: XCTestCase {
         XCTAssertEqual(secretStore.readCount(), 1)
     }
 
+    @MainActor
     func test_reportingPreferencesPersistAndClampDecimals() {
         let suiteName = "CostMonitorModelTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

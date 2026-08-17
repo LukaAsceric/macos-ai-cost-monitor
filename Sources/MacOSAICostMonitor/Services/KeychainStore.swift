@@ -63,7 +63,6 @@ public final class KeychainStore: SecretStore, @unchecked Sendable {
         let context = LAContext()
         context.interactionNotAllowed = true
         query[kSecUseAuthenticationContext as String] = context
-        query[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUIFail
         return query
     }
 

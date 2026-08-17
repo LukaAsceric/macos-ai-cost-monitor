@@ -29,6 +29,6 @@ final class KeychainStoreTests: XCTestCase {
 
         XCTAssertNotNil(context)
         XCTAssertTrue(context?.interactionNotAllowed == true)
-        XCTAssertEqual(query[kSecUseAuthenticationUI as String] as? String, kSecUseAuthenticationUIFail as String)
+        XCTAssertNil(query[kSecUseAuthenticationUI as String])
     }
 }
