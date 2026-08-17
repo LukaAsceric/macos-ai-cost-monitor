@@ -196,18 +196,26 @@ public final class CostMonitorModel: ObservableObject {
         do {
             let items = try await provider.recentActivity(apiKey: key, captureRawResponse: preferences.captureRawHTTPResponses)
             logStore.info("Received \(items.count) activity rows")
-            let date = items.map(\.date).max() ?? dateProvider.currentDateString()
+            let latestDate = items.map(\.date).max() ?? dateProvider.currentDateString()
+            let date = latestDate
+            let selectedRange = preferences.timeRange
+            let referenceDate = Self.utcDate(from: date) ?? Date()
+            let range = selectedRange.dayRange(reference: referenceDate)
             let matchingItems: [ActivityItem]
-            switch preferences.reportRange {
-            case .latestAvailableDay:
+            if selectedRange == .latestAvailableDay {
                 matchingItems = items.filter { $0.date == date }
-            case .last30Days:
-                matchingItems = items
+            } else {
+                let referenceOffset = Self.utcDayOffset(from: referenceDate)
+                matchingItems = items.filter {
+                    guard let itemDate = Self.utcDate(from: $0.date) else { return false }
+                    let offset = Self.utcDayOffset(from: itemDate) - referenceOffset
+                    return offset <= range.upperBound && offset >= range.lowerBound
+                }
             }
-            let reportDate = preferences.reportRange == .latestAvailableDay ? date : "Last 30 completed UTC days"
-            let cost = preferences.reportRange == .last30Days
-                ? ActivityAggregator.aggregateAll(matchingItems, reportDate: reportDate)
-                : ActivityAggregator.aggregate(matchingItems, for: reportDate)
+            let reportDate = selectedRange == .latestAvailableDay ? date : selectedRange.reportLabel
+            let cost = selectedRange == .latestAvailableDay
+                ? ActivityAggregator.aggregate(matchingItems, for: reportDate)
+                : ActivityAggregator.aggregateAll(matchingItems, reportDate: reportDate)
             logStore.info("Report \(reportDate): \(cost.requests) requests, \(cost.promptTokens + cost.completionTokens + cost.reasoningTokens) tokens")
             let fetchedAt = now()
             lastUpdated = fetchedAt
@@ -256,4 +264,22 @@ public struct FixedUTCDateProvider: UTCDateProviding {
     public let date: String
     public init(date: String) { self.date = date }
     public func currentDateString() -> String { date }
+}
+
+public extension CostMonitorModel {
+    static func utcDate(from string: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: string)
+    }
+
+    static func utcDayOffset(from date: Date) -> Int {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let start = calendar.startOfDay(for: date)
+        let reference = Date(timeIntervalSince1970: 0)
+        return calendar.dateComponents([.day], from: reference, to: start).day ?? 0
+    }
 }

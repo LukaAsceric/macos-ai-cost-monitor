@@ -8,8 +8,7 @@ public final class SettingsWindowController: NSWindowController {
         let hostingController = NSHostingController(rootView: rootView)
         let window = NSWindow(contentViewController: hostingController)
         window.title = "AI Cost Monitor Settings"
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        window.minSize = NSSize(width: 760, height: 500)
+        window.styleMask = [.titled, .closable]
         window.setContentSize(NSSize(width: 900, height: 620))
         window.center()
         window.isReleasedWhenClosed = false

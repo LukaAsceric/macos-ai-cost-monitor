@@ -35,4 +35,24 @@ final class ReportTimeRangeTests: XCTestCase {
         XCTAssertEqual(ReportTimeRange.options(in: .supported), [.latestAvailableDay, .last30CompletedDays])
         XCTAssertFalse(ReportTimeRange.pastHour.isSupported)
     }
+
+    func testDayRangesMapToUtcDayOffsets() throws {
+        // 2026-08-17 is a Monday. The reference is the latest completed UTC day.
+        let monday = try XCTUnwrap(CostMonitorModel.utcDate(from: "2026-08-17"))
+
+        XCTAssertEqual(ReportTimeRange.yesterday.dayRange(reference: monday), -1...0)
+        XCTAssertEqual(ReportTimeRange.pastWeek.dayRange(reference: monday), -6...0)
+        XCTAssertEqual(ReportTimeRange.thisWeek.dayRange(reference: monday), 0...0) // Monday = week start
+        XCTAssertEqual(ReportTimeRange.previousWeek.dayRange(reference: monday), -7...(-1))
+    }
+
+    func testDayRangePreviousAndThisMonth() throws {
+        let reference = try XCTUnwrap(CostMonitorModel.utcDate(from: "2026-08-17"))
+        let august = ReportTimeRange.thisMonth.dayRange(reference: reference)
+        XCTAssertEqual(august, -16...0) // 17th of the month
+
+        let july = ReportTimeRange.previousMonth.dayRange(reference: reference)
+        // July 1 … July 31, relative to Aug 17
+        XCTAssertEqual(july, -47...(-17))
+    }
 }

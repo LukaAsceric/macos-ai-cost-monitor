@@ -118,7 +118,73 @@ public enum ReportTimeRange: String, CaseIterable, Codable, Sendable, Identifiab
     }
 
     public var isSupported: Bool {
-        self == .latestAvailableDay || self == .last30CompletedDays
+        switch self {
+        case .custom, .past15Minutes, .past30Minutes, .pastHour, .past3Hours, .past24Hours, .pastYear, .thisYear, .previousYear:
+            return false
+        default:
+            return true
+        }
+    }
+
+    /// Inclusive day offsets relative to the latest completed UTC day
+    /// (0 = latest completed day, -1 = previous day, and so on).
+    public func dayRange(reference completedDate: Date = Date()) -> ClosedRange<Int> {
+        switch self {
+        case .past15Minutes, .past30Minutes, .pastHour, .past3Hours, .past24Hours, .today:
+            return 0...0
+        case .yesterday, .past48Hours:
+            return -1...0
+        case .pastWeek:
+            return -6...0
+        case .pastMonth:
+            return -29...0
+        case .pastYear, .thisYear, .previousYear:
+            return -365...0
+        case .thisWeek:
+            let start = utcCalendar.dateComponents([.weekday], from: completedDate).weekday ?? 1
+            let daysSinceMonday = start - 2
+            return (-daysSinceMonday)...0
+        case .previousWeek:
+            let start = utcCalendar.dateComponents([.weekday], from: completedDate).weekday ?? 1
+            let daysSinceMonday = start - 2
+            let previousStart = daysSinceMonday + 7
+            let previousEnd = daysSinceMonday + 1
+            return (-previousStart)...(-previousEnd)
+        case .thisMonth:
+            let day = utcCalendar.dateComponents([.day], from: completedDate).day ?? 1
+            return (1 - day)...0
+        case .previousMonth:
+            guard let firstOfMonth = utcCalendar.date(from: utcCalendar.dateComponents([.year, .month], from: completedDate)),
+                  let previousMonth = utcCalendar.date(byAdding: .month, value: -1, to: firstOfMonth),
+                  let previousStart = utcCalendar.date(from: utcCalendar.dateComponents([.year, .month], from: previousMonth)),
+                  let currentStart = utcCalendar.date(from: utcCalendar.dateComponents([.year, .month], from: completedDate)) else {
+                return -29...0
+            }
+            let startOffset = utcCalendar.dateComponents([.day], from: previousStart, to: currentStart).day ?? 30
+            let previousDays = utcCalendar.range(of: .day, in: .month, for: previousStart)?.count ?? 30
+            return (-(startOffset + previousDays - 1))...(-startOffset)
+        case .last30CompletedDays:
+            return -29...0
+        case .latestAvailableDay, .custom:
+            return 0...0
+        }
+    }
+
+    public var reportLabel: String {
+        switch self {
+        case .latestAvailableDay:
+            return "Latest completed UTC day"
+        case .last30CompletedDays, .previousWeek:
+            return "Last 30 completed UTC days"
+        default:
+            return title
+        }
+    }
+
+    private var utcCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar
     }
 
     public var reportRange: ReportRange {
