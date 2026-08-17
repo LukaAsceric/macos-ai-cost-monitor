@@ -53,7 +53,7 @@ public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
         try await activity(for: date, apiKey: apiKey, captureRawResponse: false)
     }
 
-    private func activity(for date: String, apiKey: String, captureRawResponse: Bool) async throws -> [ActivityItem] {
+    internal func activity(for date: String, apiKey: String, captureRawResponse: Bool) async throws -> [ActivityItem] {
         guard var components = URLComponents(url: baseURL.appendingPathComponent("activity"), resolvingAgainstBaseURL: false) else {
             throw OpenRouterClientError.invalidResponse
         }
