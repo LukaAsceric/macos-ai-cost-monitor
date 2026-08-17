@@ -4,7 +4,7 @@ import SwiftUI
 public struct SettingsRootView: View {
     public enum Section: String, CaseIterable, Identifiable, Hashable {
         case general
-        case openRouter
+        case provider
         case reporting
         case console
 
@@ -13,7 +13,7 @@ public struct SettingsRootView: View {
         public var title: String {
             switch self {
             case .general: return "General"
-            case .openRouter: return "OpenRouter"
+            case .provider: return "Provider"
             case .reporting: return "Reporting"
             case .console: return "Console"
             }
@@ -22,7 +22,7 @@ public struct SettingsRootView: View {
         public var icon: String {
             switch self {
             case .general: return "gearshape"
-            case .openRouter: return "key"
+            case .provider: return "network"
             case .reporting: return "chart.bar"
             case .console: return "terminal"
             }
@@ -59,8 +59,8 @@ public struct SettingsRootView: View {
         switch selection ?? .general {
         case .general:
             GeneralSettingsSection(model: model)
-        case .openRouter:
-            OpenRouterSettingsSection(model: model)
+        case .provider:
+            ProviderSettingsSection(model: model)
         case .reporting:
             ReportingSettingsSection(model: model)
         case .console:
@@ -76,7 +76,7 @@ private struct GeneralSettingsSection: View {
     var body: some View {
         SettingsSection(title: "General", subtitle: "Application behavior and diagnostics.") {
             SettingsCard(title: "Status") {
-                LabeledContent("Provider", value: "OpenRouter")
+                LabeledContent("Provider", value: model.preferences.provider.title)
                 LabeledContent("Time basis", value: "UTC completed days")
                 LabeledContent("Cache", value: "Non-sensitive usage only")
                 Text("The menu-bar popover stays compact. Use the OpenRouter and Reporting sections to change configuration, and Console to inspect sanitized diagnostics.")
@@ -88,32 +88,67 @@ private struct GeneralSettingsSection: View {
 }
 
 @MainActor
-private struct OpenRouterSettingsSection: View {
+private struct ProviderSettingsSection: View {
     @ObservedObject var model: CostMonitorModel
+    @ObservedObject private var preferences: ReportingPreferences
     @State private var key = ""
     @State private var errorMessage: String?
 
+    init(model: CostMonitorModel) {
+        self.model = model
+        self.preferences = model.preferences
+    }
+
     var body: some View {
-        SettingsSection(title: "OpenRouter", subtitle: "Secure management-key configuration.") {
-            SettingsCard(title: "Management key") {
-                Text("Create a management API key with activity access. The key is stored in macOS Keychain and never written to logs.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                SecureField("Management API key", text: $key)
-                    .textFieldStyle(.roundedBorder)
-                HStack {
-                    Button("Save key") { save() }
-                        .disabled(key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    Button("Delete saved key", role: .destructive) {
-                        do { try model.deleteManagementKey() }
-                        catch { errorMessage = "The key could not be deleted from Keychain." }
+        SettingsSection(title: "Provider", subtitle: "Choose the service used for activity reporting.") {
+            SettingsCard(title: "Provider catalog") {
+                ForEach(ProviderOption.allCases) { provider in
+                    HStack {
+                        Image(systemName: provider == preferences.provider ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(provider == preferences.provider ? .accent : .secondary)
+                        Text(provider.title)
+                        Spacer()
+                        if provider.isEnabled {
+                            Text("Available")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("Coming soon")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
                     }
-                    Spacer()
+                    .contentShape(Rectangle())
+                    .opacity(provider.isEnabled ? 1 : 0.45)
+                    .onTapGesture {
+                        guard provider.isEnabled else { return }
+                        preferences.provider = provider
+                        model.applyPreferenceChanges()
+                    }
                 }
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.caption)
-                        .foregroundStyle(.red)
+            }
+
+            if preferences.provider == .openRouter {
+                SettingsCard(title: "OpenRouter management key") {
+                    Text("Create a management API key with activity access. The key is stored in macOS Keychain and never written to logs.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    SecureField("Management API key", text: $key)
+                        .textFieldStyle(.roundedBorder)
+                    HStack {
+                        Button("Save key") { save() }
+                            .disabled(key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        Button("Delete saved key", role: .destructive) {
+                            do { try model.deleteManagementKey() }
+                            catch { errorMessage = "The key could not be deleted from Keychain." }
+                        }
+                        Spacer()
+                    }
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
                 }
             }
         }
@@ -143,13 +178,43 @@ private struct ReportingSettingsSection: View {
     }
 
     var body: some View {
-        SettingsSection(title: "Reporting", subtitle: "Control the report range, cadence, precision, and headline composition.") {
-            SettingsCard(title: "Report range") {
-                Picker("Range", selection: $preferences.reportRange) {
-                    ForEach(ReportRange.allCases) { range in
-                        Text(range.title).tag(range)
+        SettingsSection(title: "Reporting", subtitle: "Control the range, cadence, precision, and diagnostic detail.") {
+            SettingsCard(title: "Time range") {
+                ForEach(ReportTimeRange.Group.allCases) { group in
+                    Text(group.title)
+                        .font(.subheadline.weight(.medium))
+                        .padding(.top, group == .relative ? 0 : 8)
+                    ForEach(ReportTimeRange.options(in: group)) { range in
+                        HStack {
+                            Text(range.badge)
+                                .font(.caption2.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .frame(width: 34, alignment: .leading)
+                            Text(range.title)
+                            Spacer()
+                            if !range.isSupported {
+                                Text("Not available")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            } else if preferences.timeRange == range {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.accent)
+                            }
+                        }
+                        .opacity(range.isSupported ? 1 : 0.45)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            guard range.isSupported else { return }
+                            preferences.timeRange = range
+                            model.applyPreferenceChanges()
+                        }
                     }
                 }
+                Text("OpenRouter currently exposes completed UTC-day buckets. Minute/hour, local-calendar, and custom ranges are shown for orientation but remain disabled until a provider API can support them accurately.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            SettingsCard(title: "Display and refresh") {
                 Picker("Refresh", selection: $preferences.refreshInterval) {
                     Text("Every minute").tag(TimeInterval(60))
                     Text("Every 5 minutes").tag(TimeInterval(300))
@@ -162,14 +227,16 @@ private struct ReportingSettingsSection: View {
                     }
                 }
                 Toggle("Include estimated BYOK in headline", isOn: $preferences.includeByokInHeadline)
-                Text("OpenRouter reports completed UTC-day buckets. The local timezone cannot redefine those API buckets into exact local-day totals.")
+                Toggle("Capture raw HTTP responses in Console", isOn: $preferences.captureRawHTTPResponses)
+                Text("Raw capture is off by default. When enabled, response bodies are held only in the in-memory console and may contain account activity details.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .onChange(of: preferences.reportRange) { _ in model.applyPreferenceChanges() }
+            .onChange(of: preferences.timeRange) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.decimalPlaces) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.refreshInterval) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.includeByokInHeadline) { _ in model.applyPreferenceChanges() }
+            .onChange(of: preferences.captureRawHTTPResponses) { _ in model.applyPreferenceChanges() }
         }
     }
 }

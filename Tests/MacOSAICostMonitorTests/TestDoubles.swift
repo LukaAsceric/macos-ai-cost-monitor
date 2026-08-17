@@ -143,6 +143,10 @@ final actor BlockingUsageProvider: UsageProvider {
         return []
     }
 
+    func recentActivity(apiKey: String, captureRawResponse: Bool) async throws -> [ActivityItem] {
+        try await recentActivity(apiKey: apiKey)
+    }
+
     func waitUntilCalled() async {
         if called { return }
         await withCheckedContinuation { continuation in

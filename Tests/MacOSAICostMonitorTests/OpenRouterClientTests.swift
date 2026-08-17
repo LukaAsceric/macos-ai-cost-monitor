@@ -46,6 +46,35 @@ final class OpenRouterClientTests: XCTestCase {
         XCTAssertTrue(result.isEmpty)
     }
 
+    func test_rawResponseCaptureLogsBodyWithoutAuthorizationHeader() async throws {
+        let logs = AppLogStore()
+        let body = "{\"data\":[],\"diagnostic\":\"visible\"}"
+        TestURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer test-key")
+            return (HTTPURLResponse(url: try XCTUnwrap(request.url), statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
+        }
+
+        let client = OpenRouterClient(session: makeTestSession(), diagnosticLogStore: logs)
+        _ = try await client.activity(for: "", apiKey: "test-key", captureRawResponse: true)
+
+        let text = logs.text()
+        XCTAssertTrue(text.contains("RAW HTTP RESPONSE BODY"))
+        XCTAssertTrue(text.contains("visible"))
+        XCTAssertFalse(text.contains("test-key"))
+    }
+
+    func test_rawResponseCaptureIsOptIn() async throws {
+        let logs = AppLogStore()
+        TestURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: try XCTUnwrap(request.url), statusCode: 200, httpVersion: nil, headerFields: nil)!, Data("{\"data\":[]}".utf8))
+        }
+
+        let client = OpenRouterClient(session: makeTestSession(), diagnosticLogStore: logs)
+        _ = try await client.activity(for: "", apiKey: "test-key")
+
+        XCTAssertFalse(logs.text().contains("RAW HTTP RESPONSE BODY"))
+    }
+
     func test_decodesActivityRows() async throws {
         let body = """
         {"data":[{"date":"2026-08-17","model":"openai/gpt-5","provider_name":"OpenAI","usage":0.015,"requests":1,"prompt_tokens":10,"completion_tokens":20}]}

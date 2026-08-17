@@ -194,7 +194,7 @@ public final class CostMonitorModel: ObservableObject {
         state = .loading(previous: previous)
         logStore.info("Fetching OpenRouter activity window")
         do {
-            let items = try await provider.recentActivity(apiKey: key)
+            let items = try await provider.recentActivity(apiKey: key, captureRawResponse: preferences.captureRawHTTPResponses)
             logStore.info("Received \(items.count) activity rows")
             let date = items.map(\.date).max() ?? dateProvider.currentDateString()
             let matchingItems: [ActivityItem]

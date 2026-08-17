@@ -37,16 +37,19 @@ public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
 
     private let baseURL: URL
     private let session: URLSession
+    private let diagnosticLogStore: AppLogStore?
 
     public init(
         baseURL: URL = URL(string: "https://openrouter.ai/api/v1")!,
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        diagnosticLogStore: AppLogStore? = nil
     ) {
         self.baseURL = baseURL
         self.session = session
+        self.diagnosticLogStore = diagnosticLogStore
     }
 
-    public func activity(for date: String, apiKey: String) async throws -> [ActivityItem] {
+    public func activity(for date: String, apiKey: String, captureRawResponse: Bool = false) async throws -> [ActivityItem] {
         guard var components = URLComponents(url: baseURL.appendingPathComponent("activity"), resolvingAgainstBaseURL: false) else {
             throw OpenRouterClientError.invalidResponse
         }
@@ -67,6 +70,9 @@ public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
             let (data, response) = try await session.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw OpenRouterClientError.invalidResponse
+            }
+            if captureRawResponse {
+                await logRawResponse(data: data, statusCode: httpResponse.statusCode)
             }
             switch httpResponse.statusCode {
             case 200..<300:
@@ -104,6 +110,19 @@ public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
 
     public func recentActivity(apiKey: String) async throws -> [ActivityItem] {
         try await activity(for: "", apiKey: apiKey)
+    }
+
+    public func recentActivity(apiKey: String, captureRawResponse: Bool) async throws -> [ActivityItem] {
+        try await activity(for: "", apiKey: apiKey, captureRawResponse: captureRawResponse)
+    }
+
+    private func logRawResponse(data: Data, statusCode: Int) async {
+        let maxBytes = 64 * 1024
+        let captured = data.prefix(maxBytes)
+        let body = String(data: captured, encoding: .utf8) ?? "<non-UTF8 response>"
+        let suffix = data.count > maxBytes ? "\n[truncated after \(maxBytes) bytes]" : ""
+        await diagnosticLogStore?.info("HTTP response GET /api/v1/activity status=\(statusCode) bytes=\(data.count)")
+        await diagnosticLogStore?.debug("RAW HTTP RESPONSE BODY:\n\(body)\(suffix)")
     }
 
     private static func extractErrorMessage(from data: Data) -> String? {

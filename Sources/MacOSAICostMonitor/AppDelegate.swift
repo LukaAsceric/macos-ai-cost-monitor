@@ -11,7 +11,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         let logStore = AppLogStore()
         self.logStore = logStore
         self.model = CostMonitorModel(
-            provider: OpenRouterClient(),
+            provider: OpenRouterClient(diagnosticLogStore: logStore),
             secretStore: KeychainStore(),
             cache: UsageCache(),
             logStore: logStore

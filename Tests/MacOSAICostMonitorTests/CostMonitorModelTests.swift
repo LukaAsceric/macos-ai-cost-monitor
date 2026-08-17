@@ -285,4 +285,8 @@ private final class FakeUsageProvider: UsageProvider, @unchecked Sendable {
         if let error { throw error }
         return items
     }
+
+    func recentActivity(apiKey: String, captureRawResponse: Bool) async throws -> [ActivityItem] {
+        try await recentActivity(apiKey: apiKey)
+    }
 }

@@ -15,7 +15,7 @@ public struct SettingsView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("OpenRouter settings")
+            Text("Provider settings")
                 .font(.title3.weight(.semibold))
 
             GroupBox("Connection") {

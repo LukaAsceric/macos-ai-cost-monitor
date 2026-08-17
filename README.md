@@ -67,11 +67,15 @@ The key is stored in the macOS Keychain. It is not written to UserDefaults, the 
 The menu-bar popover remains a compact dashboard. Open **Settings…** from the application menu or select **Settings** in the popover to open a retained, resizable settings window. It contains:
 
 - **General**: provider, time-basis, cache, and diagnostic behavior.
-- **OpenRouter**: save or delete the management key securely.
+- **Provider**: choose the active provider and save or delete its management key securely.
 - **Reporting**: range, refresh interval, decimal precision, and BYOK headline behavior.
 - **Console**: a searchable, level-filtered live diagnostic stream with Copy and Clear actions.
 
-The Console is deliberately metadata-only. It records refresh lifecycle, row counts, selected report ranges, aggregate request/token counts, cache outcomes, and sanitized error messages. It never records management keys, bearer tokens, authorization headers, response bodies, or full secret-bearing URLs. The in-memory console is capped at 500 entries and is not persisted to disk.
+The Provider section now includes a catalog of common providers. OpenRouter is enabled; OpenAI, Anthropic, Google AI, Mistral, Groq, xAI, Together AI, Fireworks AI, DeepSeek, Cohere, and Perplexity are listed as disabled “Coming soon” options until their integrations are implemented.
+
+The Reporting section mirrors the supplied range picker with relative ranges such as “Past 15 Minutes”, calendar ranges such as “Today” and “Previous Month”, and a “Custom range…” entry. These remain disabled because OpenRouter activity currently exposes completed UTC-day buckets only. The enabled choices are “Latest available completed UTC day” and “Last 30 completed UTC days”.
+
+The Console is deliberately metadata-only by default. An explicit **Capture raw HTTP responses** opt-in can show the OpenRouter response body for troubleshooting; it is held only in the in-memory console, capped by the existing capacity, and may contain account activity details. Authorization headers and management keys are never captured, and Copy applies redaction again. Raw capture is off by default.
 
 ## Setup
 
