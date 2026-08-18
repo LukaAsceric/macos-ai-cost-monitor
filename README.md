@@ -47,7 +47,7 @@ The retained settings window has:
 - **Provider** — OpenRouter is enabled; other providers remain listed as coming soon
 - **Reporting** — ranges, timezone, decimals, detail toggles, raw HTTP capture
 - **Alerts** — local budget threshold and optional macOS notification
-- **Release** — what local signing can and cannot do
+- **Release** — update status, signed update checks, and distribution requirements
 - **Console** — filter, copy, clear, sanitized log export
 
 General is intentionally an operational overview rather than a second settings form. Configuration lives in Provider, Reporting, and Alerts; General tells you what the monitor is doing right now and provides shortcuts to those areas.
@@ -61,18 +61,30 @@ The window can only be closed. It cannot be minimized or maximized.
 - Sanitized console export to Application Support
 - Signed local `.app` via `Scripts/build-app.sh`
 
-Not included, and documented in Settings → Release:
+Distribution limitations, documented in Settings → Release:
 
-- Auto-update
 - Developer ID notarization
 - Mac App Store packaging
-- OAuth login — OpenRouter OAuth mints an inference key, not a management key
+
+Auto-update is implemented with Sparkle 2.9.6. It is enabled only in packaged releases that include a Sparkle EdDSA public key and a signed appcast; direct `swift run` binaries and unsigned previews keep it disabled.
+OAuth login is not included because OpenRouter OAuth mints an inference key, not a management key.
 
 ## Requirements
 
 - macOS 13 Ventura or later
 - Xcode Command Line Tools or Xcode
 - An OpenRouter management API key with analytics/activity access
+
+## Updates
+
+The app uses Sparkle 2.9.6 with EdDSA-signed appcasts hosted on GitHub Releases. Update checks run over HTTPS, and Sparkle verifies the signed feed and update archive before installation. Automatic download/install is disabled; the user explicitly approves the update.
+
+The release workflow requires these GitHub Actions secrets:
+
+- `SPARKLE_PUBLIC_ED_KEY` — public key embedded into the packaged app
+- `SPARKLE_EDDSA_PRIVATE_KEY` — private key used only by the release workflow to sign appcasts and update archives
+
+Never commit the private key. Generate the key pair with Sparkle's `generate_keys` tool on macOS, store the private value as a GitHub Actions secret, and keep only the public value in the release configuration.
 
 ## Install a release
 

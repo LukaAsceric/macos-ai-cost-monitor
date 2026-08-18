@@ -11,6 +11,11 @@ struct MacOSAICostMonitorApp: App {
         }
         .commands {
             CommandGroup(replacing: .appSettings) {
+                Button("Check for Updates…") {
+                    appDelegate.updateManager.checkForUpdates()
+                }
+                .disabled(!appDelegate.updateManager.canCheckForUpdates)
+
                 Button("Settings…") {
                     appDelegate.showSettings()
                 }

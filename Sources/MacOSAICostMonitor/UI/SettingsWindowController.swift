@@ -3,8 +3,8 @@ import SwiftUI
 
 @MainActor
 public final class SettingsWindowController: NSWindowController {
-    public init(model: CostMonitorModel, logStore: AppLogStore) {
-        let rootView = SettingsRootView(model: model, logStore: logStore)
+    public init(model: CostMonitorModel, logStore: AppLogStore, updateManager: UpdateManager) {
+        let rootView = SettingsRootView(model: model, logStore: logStore, updateManager: updateManager)
         let hostingController = NSHostingController(rootView: rootView)
         let window = NSWindow(contentViewController: hostingController)
         window.title = "AI Cost Monitor Settings"

@@ -36,9 +36,32 @@ jobs:
             *) echo "Tag must use semantic versioning, for example v0.1.0"; exit 1 ;;
           esac
 
-      - name: Build, test, sign, and package
+      - name: Fetch Sparkle signing tools
+        env:
+          SPARKLE_VERSION: 2.9.6
+        run: |
+          curl --fail --silent --show-error --location \
+            "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" \
+            --output "$RUNNER_TEMP/Sparkle-${SPARKLE_VERSION}.tar.xz"
+          echo "52bf9e88cdd972fc0c81501377a880e90d47031bd8ca5462488f843e2609e192  $RUNNER_TEMP/Sparkle-${SPARKLE_VERSION}.tar.xz" | shasum -a 256 -c -
+          tar -xJf "$RUNNER_TEMP/Sparkle-${SPARKLE_VERSION}.tar.xz" -C "$RUNNER_TEMP"
+          test -x "$RUNNER_TEMP/Sparkle-${SPARKLE_VERSION}/bin/generate_appcast"
+
+      - name: Verify Sparkle signing configuration
+        env:
+          SPARKLE_EDDSA_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
+          SPARKLE_PUBLIC_ED_KEY: ${{ secrets.SPARKLE_PUBLIC_ED_KEY }}
+        run: |
+          test -n "$SPARKLE_EDDSA_PRIVATE_KEY" || { echo "Missing SPARKLE_EDDSA_PRIVATE_KEY repository secret"; exit 1; }
+          test -n "$SPARKLE_PUBLIC_ED_KEY" || { echo "Missing SPARKLE_PUBLIC_ED_KEY repository secret"; exit 1; }
+
+      - name: Build, test, sign, package, and generate signed appcast
         env:
           VERSION: ${{ github.ref_name }}
+          SPARKLE_BIN: ${{ runner.temp }}/Sparkle-2.9.6/bin
+          SPARKLE_EDDSA_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
+          SPARKLE_PUBLIC_ED_KEY: ${{ secrets.SPARKLE_PUBLIC_ED_KEY }}
+          RELEASE_DOWNLOAD_BASE_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
         run: |
           VERSION="${VERSION#v}" bash Scripts/package-release.sh
 
@@ -52,6 +75,8 @@ jobs:
             dist/*.zip
             dist/SHA256SUMS.txt
             dist/RELEASE_NOTES.md
+            dist/*-macOS.md
+            dist/appcast.xml
 
       - name: Publish GitHub release
         env:
@@ -63,4 +88,6 @@ jobs:
             --notes-file dist/RELEASE_NOTES.md \
             dist/*.dmg \
             dist/*.zip \
-            dist/SHA256SUMS.txt
+            dist/SHA256SUMS.txt \
+            dist/*-macOS.md \
+            dist/appcast.xml

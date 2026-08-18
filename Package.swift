@@ -4,12 +4,18 @@ import PackageDescription
 let package = Package(
     name: "MacOSAICostMonitor",
     platforms: [.macOS(.v13)],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.6")
+    ],
     products: [
         .executable(name: "MacOSAICostMonitor", targets: ["MacOSAICostMonitor"])
     ],
     targets: [
         .executableTarget(
             name: "MacOSAICostMonitor",
+            dependencies: [
+                .product(name: "Sparkle", package: "sparkle")
+            ],
             path: "Sources/MacOSAICostMonitor",
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency")

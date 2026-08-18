@@ -37,11 +37,13 @@ public struct SettingsRootView: View {
 
     @ObservedObject private var model: CostMonitorModel
     @ObservedObject private var logStore: AppLogStore
+    @ObservedObject private var updateManager: UpdateManager
     @State private var selection: Section? = .general
 
-    public init(model: CostMonitorModel, logStore: AppLogStore) {
+    public init(model: CostMonitorModel, logStore: AppLogStore, updateManager: UpdateManager) {
         self.model = model
         self.logStore = logStore
+        self.updateManager = updateManager
     }
 
     public var body: some View {
@@ -74,7 +76,7 @@ public struct SettingsRootView: View {
         case .alerts:
             AlertsSettingsSection(model: model)
         case .release:
-            ReleaseSettingsSection()
+            ReleaseSettingsSection(updateManager: updateManager)
         case .console:
             ConsoleView(logStore: logStore, model: model)
         }
@@ -387,16 +389,30 @@ private struct AlertsSettingsSection: View {
 
 @MainActor
 private struct ReleaseSettingsSection: View {
+    @ObservedObject var updateManager: UpdateManager
+
     var body: some View {
-        SettingsSection(title: "Release", subtitle: "Local signing is supported. Notarization, auto-update, and App Store distribution are not built into this app.") {
-            SettingsCard(title: "What this build can do") {
-                LabeledContent("Local .app", value: "Scripts/build-app.sh")
-                LabeledContent("Ad-hoc or Development signing", value: "CODESIGN_IDENTITY")
-                LabeledContent("Auto-update", value: "Not included")
-                LabeledContent("Notarization", value: "Manual Xcode / notarytool")
-                LabeledContent("App Store", value: "Not included")
-                Text("OpenRouter OAuth PKCE mints a regular inference key. Analytics and activity require a management key, so this app keeps Keychain-based management-key setup instead of OAuth login.")
+        SettingsSection(title: "Release", subtitle: "Keep the app current with signed updates.") {
+            SettingsCard(title: "Updates") {
+                LabeledContent("Update feed", value: UpdateConfiguration.feedURL.host ?? "GitHub")
+                LabeledContent("Automatic checks", value: updateManager.isConfigured ? "Enabled" : "Unavailable")
+                Text(updateManager.status)
                     .font(.callout)
+                    .foregroundStyle(.secondary)
+                Button("Check for Updates…") {
+                    updateManager.checkForUpdates()
+                }
+                .disabled(!updateManager.canCheckForUpdates)
+                Text("Updates are verified with Sparkle signatures before installation. Preview builds without a configured public key keep this control disabled.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            SettingsCard(title: "Distribution") {
+                LabeledContent("Local .app", value: "Scripts/build-app.sh")
+                LabeledContent("Developer ID / notarization", value: "Required for silent Gatekeeper approval")
+                Text("OpenRouter OAuth PKCE mints a regular inference key. Analytics and activity require a management key, so this app keeps Keychain-based management-key setup instead of OAuth login.")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
