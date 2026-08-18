@@ -252,7 +252,8 @@ public final class CostMonitorModel: ObservableObject {
                 customStart: preferences.customStart,
                 customEnd: preferences.customEnd
             )
-            logStore.info("Analytics \(preferences.timeRange.title) \(query.granularity?.rawValue ?? \"aggregate\") \(query.timeRange.start) → \(query.timeRange.end)")
+            let granularity = query.granularity?.rawValue ?? "aggregate"
+            logStore.info("Analytics \(preferences.timeRange.title) \(granularity) \(query.timeRange.start) → \(query.timeRange.end)")
             let result = try await provider.queryAnalytics(
                 query,
                 apiKey: key,

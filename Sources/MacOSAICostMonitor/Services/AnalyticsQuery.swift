@@ -164,12 +164,13 @@ public struct AnalyticsQueryResult: Equatable, Sendable {
     }
 
     public var sessionCount: Int {
-        Set(rows.compactMap { row in
+        let sessionIDs: [String] = rows.compactMap { row in
             guard let sessionID = row.sessionID,
                   !sessionID.isEmpty,
                   sessionID != "none" else { return nil }
             return sessionID
-        }).count
+        }
+        return Set(sessionIDs).count
     }
 
     public var series: [CostSeriesPoint] {
