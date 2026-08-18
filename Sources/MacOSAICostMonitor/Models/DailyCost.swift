@@ -147,18 +147,21 @@ public extension Array where Element == CostBreakdown {
 
         var merged: [String: CostBreakdown] = [:]
         for entry in self {
-            if let existing = merged[entry.model] {
-                let known = existing.provider.split(separator: ", ").map(String.init)
-                let distinct = Array(Set(known + [entry.provider])).sorted()
-                merged[entry.model] = CostBreakdown(
+            if var existing = merged[entry.model] {
+                var providers = existing.provider.split(separator: ", ").map(String.init)
+                if !providers.contains(entry.provider) {
+                    providers.append(entry.provider)
+                }
+                existing = CostBreakdown(
                     model: entry.model,
-                    provider: distinct.joined(separator: ", "),
+                    provider: providers.sorted().joined(separator: ", "),
                     usage: existing.usage + entry.usage,
                     requests: existing.requests + entry.requests,
                     promptTokens: existing.promptTokens + entry.promptTokens,
                     completionTokens: existing.completionTokens + entry.completionTokens,
                     reasoningTokens: existing.reasoningTokens + entry.reasoningTokens
                 )
+                merged[entry.model] = existing
             } else {
                 merged[entry.model] = entry
             }
