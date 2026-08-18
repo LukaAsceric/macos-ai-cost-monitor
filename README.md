@@ -68,6 +68,10 @@ The menu-bar popover keeps the current spend, request/session counts, remaining 
 
 ## Product features
 
+![AI Cost Monitor app icon](docs/app-icon-live-spend.svg)
+
+The app icon uses a live-spend sparkline and wallet motif to represent usage costs at a glance.
+
 - Compact menu-bar popover with spend, Sessions, remaining Credits, model/provider details, and a sparkline
 - Local budget threshold with optional notification
 - Sanitized console export to Application Support
