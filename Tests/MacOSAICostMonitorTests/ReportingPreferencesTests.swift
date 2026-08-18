@@ -2,6 +2,7 @@ import Foundation
 import XCTest
 @testable import MacOSAICostMonitor
 
+@MainActor
 final class ReportingPreferencesTests: XCTestCase {
     func test_unsupportedTimeRangeFallsBackToLatestAvailableDay() {
         let defaults = UserDefaults(suiteName: "ReportingPreferencesTests.\(UUID().uuidString)")!
