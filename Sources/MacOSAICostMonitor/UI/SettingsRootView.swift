@@ -66,9 +66,7 @@ public struct SettingsRootView: View {
     private var detail: some View {
         switch selection ?? .general {
         case .general:
-            GeneralSettingsSection(model: model, logStore: logStore) { section in
-                selection = section
-            }
+            GeneralSettingsSection(model: model, logStore: logStore)
         case .provider:
             ProviderSettingsSection(model: model)
         case .reporting:
@@ -87,14 +85,14 @@ public struct SettingsRootView: View {
 private struct GeneralSettingsSection: View {
     @ObservedObject var model: CostMonitorModel
     @ObservedObject var logStore: AppLogStore
-    let onNavigate: (SettingsRootView.Section) -> Void
-
     var body: some View {
         SettingsSection(title: "Overview", subtitle: "A live snapshot of the monitor, not another configuration page.") {
             statusCard
-            reportCard
-            activityCard
-            quickActionsCard
+            HStack(alignment: .top, spacing: 12) {
+                reportCard
+                activityCard
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -129,6 +127,7 @@ private struct GeneralSettingsSection: View {
                 LabeledContent("Current spend", value: CostFormatStyle.headline(cost.usage, maximumFractionDigits: model.preferences.decimalPlaces))
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var activityCard: some View {
@@ -142,24 +141,7 @@ private struct GeneralSettingsSection: View {
                     .foregroundStyle(.orange)
             }
         }
-    }
-
-    private var quickActionsCard: some View {
-        SettingsCard(title: "Quick actions") {
-            HStack {
-                Button("Refresh now") {
-                    Task { _ = await model.refresh() }
-                }
-                Button("Provider") { onNavigate(.provider) }
-                Button("Reporting") { onNavigate(.reporting) }
-                Button("Alerts") { onNavigate(.alerts) }
-                Button("Console") { onNavigate(.console) }
-            }
-            .buttonStyle(.bordered)
-            Text("Secrets stay in Keychain. Use Console only when you need to understand a refresh or export a redacted diagnostic log.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var statusIcon: String {
@@ -288,8 +270,28 @@ private struct ReportingSettingsSection: View {
         model.applyPreferenceChanges()
     }
 
+    private var dialogRangesCard: some View {
+        SettingsCard(title: "Menu-bar dialog ranges") {
+            Text("Choose which ranges appear in the menu-bar dialog.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            ForEach(ReportTimeRange.Group.allCases) { group in
+                Text(group.title)
+                    .font(.subheadline.weight(.medium))
+                    .padding(.top, 8)
+                ForEach(ReportTimeRange.options(in: group).filter(\.isSupported)) { range in
+                    Toggle(range.menuLabel, isOn: Binding(
+                        get: { preferences.dialogTimeRanges.contains(range) },
+                        set: { preferences.setDialogTimeRange(range, enabled: $0) }
+                    ))
+                }
+            }
+        }
+    }
+
     var body: some View {
         SettingsSection(title: "Reporting", subtitle: "Control the range, cadence, precision, and diagnostic detail.") {
+            dialogRangesCard
             SettingsCard(title: "Time range") {
                 TimeRangeGroupView(title: "Relative ranges", ranges: [
                     .past15Minutes, .past30Minutes, .pastHour, .past3Hours,
@@ -327,7 +329,6 @@ private struct ReportingSettingsSection: View {
                     Text(TimeZone.current.identifier).tag(TimeZone.current.identifier)
                     Text("UTC").tag("GMT")
                 }
-                Toggle("Include estimated BYOK in headline", isOn: $preferences.includeByokInHeadline)
                 Toggle("Show provider names", isOn: $preferences.showProviderDetails)
                 Toggle("Group models across providers", isOn: $preferences.groupModelsAcrossProviders)
                 Toggle("Show full model list", isOn: $preferences.showFullBreakdown)
@@ -401,13 +402,6 @@ private struct ReleaseSettingsSection: View {
                     .foregroundStyle(.secondary)
             }
 
-            SettingsCard(title: "Distribution") {
-                LabeledContent("Local .app", value: "Scripts/build-app.sh")
-                LabeledContent("Developer ID / notarization", value: "Required for silent Gatekeeper approval")
-                Text("OpenRouter OAuth PKCE mints a regular inference key. Analytics and activity require a management key, so this app keeps Keychain-based management-key setup instead of OAuth login.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
         }
     }
 }

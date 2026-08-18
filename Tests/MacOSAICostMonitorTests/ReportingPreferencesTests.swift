@@ -38,4 +38,34 @@ final class ReportingPreferencesTests: XCTestCase {
         XCTAssertEqual(ReportTimeRange.previousMonth.menuLabel, "Previous Month")
         XCTAssertEqual(ReportTimeRange.previousYear.menuLabel, "Previous Year")
     }
+
+    func test_dialogTimeRangesDefaultToAllAndPersistUserSelection() {
+        let suiteName = "ReportingPreferencesTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let preferences = ReportingPreferences(defaults: defaults)
+        XCTAssertEqual(preferences.dialogTimeRanges, Set(ReportTimeRange.allCases))
+
+        preferences.setDialogTimeRange(.today, enabled: false)
+
+        XCTAssertFalse(preferences.dialogTimeRanges.contains(.today))
+        XCTAssertEqual(defaults.array(forKey: "dialogTimeRanges") as? [String], preferences.dialogTimeRanges.map(\.rawValue).sorted())
+
+        let restored = ReportingPreferences(defaults: defaults)
+        XCTAssertFalse(restored.dialogTimeRanges.contains(.today))
+    }
+
+    func test_dialogTimeRangesCannotBeDisabledCompletely() {
+        let suiteName = "ReportingPreferencesTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let preferences = ReportingPreferences(defaults: defaults)
+        for range in ReportTimeRange.allCases {
+            preferences.setDialogTimeRange(range, enabled: false)
+        }
+
+        XCTAssertEqual(preferences.dialogTimeRanges.count, 1)
+    }
 }

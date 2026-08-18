@@ -131,8 +131,6 @@ public final class StatusBarController: NSObject {
     }
 
     private func displayedUsage(for cost: DailyCost) -> Decimal {
-        model.preferences.includeByokInHeadline
-            ? cost.usage + cost.byokUsageInference
-            : cost.usage
+        cost.usage
     }
 }

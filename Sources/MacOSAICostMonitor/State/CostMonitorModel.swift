@@ -359,7 +359,7 @@ public final class CostMonitorModel: ObservableObject {
             budgetExceeded = false
             return
         }
-        let displayed = preferences.includeByokInHeadline ? (cost.usage + cost.byokUsageInference) : cost.usage
+        let displayed = cost.usage
         let exceeded = displayed >= Decimal(preferences.budgetAmount)
         if exceeded && !budgetExceeded && preferences.notifyOnBudget {
             logStore.warning("Budget threshold reached: \(displayed) >= \(preferences.budgetAmount)")
