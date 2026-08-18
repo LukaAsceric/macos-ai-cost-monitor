@@ -281,6 +281,11 @@ private struct ReportingSettingsSection: View {
                     ))
                 }
             }
+            if preferences.timeRange == .custom {
+                Divider()
+                DatePicker("Custom from", selection: $preferences.customStart)
+                DatePicker("Custom to", selection: $preferences.customEnd)
+            }
         }
     }
 

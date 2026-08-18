@@ -72,6 +72,7 @@ The menu-bar popover keeps the current spend, request/session counts, remaining 
 - Local budget threshold with optional notification
 - Sanitized console export to Application Support
 - Signed local `.app` via `Scripts/build-app.sh`
+- Live Spend app icon with Sparkline and wallet motif
 
 Distribution limitations, documented in Settings → Release:
 
@@ -89,7 +90,7 @@ OAuth login is not included because OpenRouter OAuth mints an inference key, not
 
 ## Updates
 
-The app uses Sparkle 2.9.6 with EdDSA-signed appcasts hosted on GitHub Releases. Update checks run over HTTPS, and Sparkle verifies the signed feed and update archive before installation. Automatic download/install is disabled; the user explicitly approves the update.
+The app uses Sparkle 2.9.6 with EdDSA-signed appcasts hosted on GitHub Releases. Update checks run over HTTPS, and Sparkle verifies the signed feed and update archive before installation. The `Automatic updates` setting controls whether Sparkle may download and install updates without a separate approval step.
 
 The release workflow requires these GitHub Actions secrets:
 
@@ -121,7 +122,7 @@ The management key is stored in macOS Keychain. It is not included in the app, D
 
 Public preview builds are ad-hoc signed and not notarized. A future Developer ID + notarized release will remove the first-launch Gatekeeper step.
 
-Packaged releases use Sparkle 2.9.6 with signed EdDSA appcasts. Automatic download/install is disabled; updates require user approval.
+Packaged releases use Sparkle 2.9.6 with signed EdDSA appcasts. The update behavior is controlled in Release settings.
 
 ## Build and run
 
