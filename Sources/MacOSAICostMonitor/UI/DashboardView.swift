@@ -203,16 +203,16 @@ public struct DashboardView: View {
                                 selectTimeRange(range)
                             } label: {
                                 if preferences.timeRange == range {
-                                    Label(range.title, systemImage: "checkmark")
+                                    Label(range.menuLabel, systemImage: "checkmark")
                                 } else {
-                                    Text(range.title)
+                                    Text(range.menuLabel)
                                 }
                             }
                         }
                     }
                 }
             } label: {
-                Label(preferences.timeRange.badge, systemImage: "calendar")
+                Label(preferences.timeRange.menuLabel, systemImage: "calendar")
             }
             Button("Refresh now") {
                 Task { _ = await model.refresh() }

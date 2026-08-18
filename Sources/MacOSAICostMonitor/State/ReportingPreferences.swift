@@ -117,6 +117,8 @@ public enum ReportTimeRange: String, CaseIterable, Codable, Sendable, Identifiab
         }
     }
 
+    public var menuLabel: String { title }
+
     public var isSupported: Bool { true }
 
     public var analyticsGranularity: AnalyticsGranularity {
