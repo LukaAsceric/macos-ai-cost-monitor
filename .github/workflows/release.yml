@@ -76,7 +76,6 @@ jobs:
             dist/*.dmg
             dist/*.zip
             dist/SHA256SUMS.txt
-            dist/RELEASE_NOTES.md
             dist/*-macOS.md
             dist/appcast.xml
 
@@ -84,10 +83,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          INSTALL_NOTE="Follow the installation instructions in the repository README: https://github.com/${GITHUB_REPOSITORY}#install-a-release"
           gh release create "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
             --title "AI Cost Monitor $GITHUB_REF_NAME" \
-            --notes-file dist/RELEASE_NOTES.md \
+            --generate-notes \
+            --notes "$INSTALL_NOTE" \
             dist/*.dmg \
             dist/*.zip \
             dist/SHA256SUMS.txt \

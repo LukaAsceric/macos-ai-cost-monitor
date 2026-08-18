@@ -114,38 +114,11 @@ hdiutil create \
     "$DMG_PATH"
 
 rm -rf "$DMG_STAGING"
-rm -f "$DIST_DIR/SHA256SUMS.txt" "$DIST_DIR/RELEASE_NOTES.md" "$DIST_DIR/appcast.xml"
+rm -f "$DIST_DIR/SHA256SUMS.txt" "$DIST_DIR/appcast.xml"
 (
     cd "$DIST_DIR"
     shasum -a 256 "$(basename "$DMG_PATH")" "$(basename "$ZIP_PATH")" > SHA256SUMS.txt
 )
-
-cat > "$DIST_DIR/RELEASE_NOTES.md" <<NOTE
-## Install
-
-1. Download **$APP_NAME-$VERSION-macOS.dmg**.
-2. Open the disk image and drag **$APP_NAME.app** to **Applications**.
-3. On first launch, macOS may show an unidentified-developer warning because this preview is ad-hoc signed. Control-click the app, choose **Open**, and confirm. If needed, use **System Settings → Privacy & Security → Open Anyway**.
-4. Open Settings → Provider and add an OpenRouter management key.
-
-The ZIP contains the same universal app. \`SHA256SUMS.txt\` contains SHA-256 checksums for both installers.
-
-## Requirements
-
-- macOS 13 Ventura or later
-- Apple Silicon or Intel Mac
-- OpenRouter management key with analytics access
-
-## Security
-
-The management key is stored in macOS Keychain. It is not included in the app, DMG, ZIP, logs, cache, or release artifacts.
-
-## Distribution note
-
-This public preview is ad-hoc signed and not notarized. A future Developer ID + notarized release will remove the first-launch Gatekeeper step.
-
-Update checks use Sparkle 2.9.6 and require a signed EdDSA appcast. Automatic download/install is disabled; updates require user approval.
-NOTE
 
 if [[ -n "$SPARKLE_BIN" && -n "$RELEASE_DOWNLOAD_BASE_URL" ]]; then
     if [[ -z "${SPARKLE_EDDSA_PRIVATE_KEY:-}" ]]; then
@@ -157,7 +130,13 @@ if [[ -n "$SPARKLE_BIN" && -n "$RELEASE_DOWNLOAD_BASE_URL" ]]; then
     mkdir -p "$UPDATE_INPUT_DIR"
     cp "$ZIP_PATH" "$UPDATE_INPUT_DIR/"
     UPDATE_NOTES_NAME="${APP_NAME}-${VERSION}-macOS.md"
-    cp "$DIST_DIR/RELEASE_NOTES.md" "$UPDATE_INPUT_DIR/$UPDATE_NOTES_NAME"
+    cat > "$UPDATE_INPUT_DIR/$UPDATE_NOTES_NAME" <<NOTE
+## What's new
+
+See the [release description](https://github.com/LukaAsceric/macos-ai-cost-monitor/releases/tag/v$VERSION) for the release notes.
+
+Installation instructions are maintained in the repository [README](https://github.com/LukaAsceric/macos-ai-cost-monitor#install-a-release).
+NOTE
 
     printf '%s\n' "$SPARKLE_EDDSA_PRIVATE_KEY" | \
         "$SPARKLE_BIN/generate_appcast" \
