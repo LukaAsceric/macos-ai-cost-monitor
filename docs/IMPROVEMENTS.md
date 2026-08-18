@@ -13,11 +13,26 @@ Legende: `[ ]` offen · `[x]` umgesetzt · `[skipped]` bewusst verworfen.
       Provider hinweg zusammen (usage/requests/tokens summiert, Provider zu
       sortierter deduplizierter Liste). Reiner Anzeige-Eingriff; Cache-Struktur
       unverändert.
+- [x] **Chart-Geometrie (SpendChartView)** — reine, testbare `SpendChartLayout`-
+      Helfer: Single-Point wird horizontal zentriert (statt links angepinnt),
+      Y-Position wird geklammert (Ausreißer/negative Werte verlassen die Bounds
+      nie), Flächen-Gradient unter der Kurve, 7 Unit-Tests für alle Randfälle.
+- [x] **Display-only-Präferenzen vom Refresh entkoppelt** — `applyPreferenceChanges`
+      triggert bei dem reinen Anzeige-Toggles (Gruppierung, Provider-Namen, Voll-Liste,
+      Token-/Request-Details) keinen Netzwerk-Request mehr.
+- [x] **`actions/upload-artifact@v5`** — von v4 auf v5 angehoben. Die Node-20-Laufzeitwarnung
+      besteht jedoch weiterhin (v5 wird ebenso unter Node 24 erzwungen); rein kosmetische
+      Warnung ohne Funktionsfehler, bei Gelegenheit erneut prüfen.
+- [x] **Sparkle-Archiv-Layout-Pitfall dokumentiert** — Skill `macos-release-updates`.
+
+## Bereits vorhanden (nur verifiziert, kein Handlungsbedarf)
+
+- [x] **Cache-Versionsmarker** — `CachedUsage` trägt bereits ein `version`-Feld;
+      `UsageCache.load()` verwirft jede Datei mit `version != 1` (Test
+      `test_rejectsUnsupportedCacheVersion` vorhanden).
 
 ## UX / Anzeige
 
-- [ ] **Chart-Verbesserung (SpendChartView)** — Fläche unter der Kurve (Gradient),
-      besserer Single-Point-Fall, dezente Minimal-/Maximal-Marker.
 - [ ] **Menüleisten-Tooltip mit stale/budget-Anreicherung** — bereits teils vorhanden;
       Konsistenz für alle States (`.noData` mit previous).
 - [ ] **`—` statt `…` bei initialem Loading ohne Cache** — Menüleiste zeigt im ersten
@@ -27,22 +42,8 @@ Legende: `[ ]` offen · `[x]` umgesetzt · `[skipped]` bewusst verworfen.
 
 ## Zuverlässigkeit / Korrektheit
 
-- [ ] **Display-only-Präferenzen von Refresh entkoppeln** — `applyPreferenceChanges`
-      triggert derzeit bei jedem reinen Anzeige-Toggle (Gruppierung, Provider-Namen,
-      Voll-Liste) einen Netzwerk-Refresh. Aufteilen in „Daten" vs. „Anzeige"-Änderungen,
-      um unnötige Requests zu vermeiden.
-  _(umgesetzt: daten-relevante Präferenzen behalten Refresh; Anzeige-Toggles nicht mehr)_
-- [ ] **DoS-Guard für gruppierte Modellnamen** — extrem lange Modell-/Provider-Zeichenketten
+- [ ] **DoS-Guard für lange Modell-/Provider-Strings** — extrem lange Zeichenketten
       bei `lineLimit`/Importen; kein harter Fehlerzustand.
-- [ ] **Cache-Migration/Versionsmarker** — CachedUsage auf expliziten Format-Versions-Marker
-      prüfen (Datei bereits versioniert prüfen).
-
-## Automatisierung / CI
-
-- [x] **`actions/upload-artifact@v5`** — von v4 auf v5 angehoben. Die Node-20-Laufzeitwarnung
-      besteht jedoch weiterhin (v5 wird ebenso unter Node 24 erzwungen); rein kosmetische
-      Warnung ohne Funktionsfehler, bei Gelegenheit erneut prüfen.
-- [x] **Sparkle-Archiv-Layout-Pitfall dokumentiert** — Skill `macos-release-updates`.
 
 ## Nicht priorisiert / bewusst offen
 
