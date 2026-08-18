@@ -45,7 +45,7 @@ The retained settings window has:
 
 - **General / Overview** — live connection state, management-key status, current report, last refresh, cache/console activity, and quick actions
 - **Provider** — OpenRouter is enabled; other providers remain listed as coming soon
-- **Reporting** — ranges, timezone, decimals, detail toggles, raw HTTP capture
+- **Reporting** — ranges, timezone, decimals, raw HTTP capture
 - **Alerts** — local budget threshold and optional macOS notification
 - **Release** — update status, signed update checks, and distribution requirements
 - **Console** — filter, copy, clear, sanitized log export
@@ -56,7 +56,7 @@ The window can only be closed. It cannot be minimized or maximized.
 
 ## Product features
 
-- Compact menu-bar popover with spend, optional token/request/provider details, and a sparkline
+- Compact menu-bar popover with spend, Sessions, remaining Credits, model/provider details, and a sparkline
 - Local budget threshold with optional notification
 - Sanitized console export to Application Support
 - Signed local `.app` via `Scripts/build-app.sh`
@@ -88,9 +88,28 @@ Never commit the private key. Generate the key pair with Sparkle's `generate_key
 
 ## Install a release
 
-Download the latest **DMG** from the repository's [Releases](https://github.com/LukaAsceric/macos-ai-cost-monitor/releases) page, open it, and drag **MacOSAICostMonitor.app** to Applications.
+1. Download the latest **DMG** from the repository's [Releases](https://github.com/LukaAsceric/macos-ai-cost-monitor/releases) page.
+2. Open the disk image and drag **MacOSAICostMonitor.app** to **Applications**.
+3. On first launch, macOS may show an unidentified-developer warning because public preview builds are ad-hoc signed. Control-click the app, choose **Open**, and confirm. If needed, use **System Settings → Privacy & Security → Open Anyway**.
+4. Open **Settings → Provider** and add an OpenRouter management key.
 
-This public preview is ad-hoc signed and not notarized. On first launch, Control-click the app and choose **Open**. If macOS still blocks it, use **System Settings → Privacy & Security → Open Anyway**. Verify the downloaded DMG or ZIP with `SHA256SUMS.txt` when desired.
+The ZIP contains the same universal app. `SHA256SUMS.txt` contains SHA-256 checksums for both installers.
+
+### Requirements
+
+- macOS 13 Ventura or later
+- Apple Silicon or Intel Mac
+- OpenRouter management key with analytics access
+
+### Security
+
+The management key is stored in macOS Keychain. It is not included in the app, DMG, ZIP, logs, cache, or release artifacts.
+
+### Distribution and updates
+
+Public preview builds are ad-hoc signed and not notarized. A future Developer ID + notarized release will remove the first-launch Gatekeeper step.
+
+Packaged releases use Sparkle 2.9.6 with signed EdDSA appcasts. Automatic download/install is disabled; updates require user approval.
 
 ## Build and run
 
