@@ -72,6 +72,7 @@ The menu-bar popover keeps the current spend, request/session counts, remaining 
 - Local budget threshold with optional notification
 - Sanitized console export to Application Support
 - Signed local `.app` via `Scripts/build-app.sh`
+- Live Spend app icon with Sparkline and wallet motif
 
 Distribution limitations, documented in Settings → Release:
 

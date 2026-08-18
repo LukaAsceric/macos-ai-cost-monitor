@@ -41,6 +41,8 @@ fi
 
 if [[ -f "Resources/AppIcon.icns" ]]; then
   cp "Resources/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
+elif command -v iconutil >/dev/null 2>&1 && [[ -d "Resources/AppIcon.iconset" ]]; then
+  iconutil -c icns "Resources/AppIcon.iconset" -o "$APP_DIR/Contents/Resources/AppIcon.icns"
 fi
 
 if command -v codesign >/dev/null 2>&1; then
