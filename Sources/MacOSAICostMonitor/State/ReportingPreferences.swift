@@ -330,6 +330,7 @@ public final class ReportingPreferences: ObservableObject {
         static let showProviderDetails = "showProviderDetails"
         static let showFullBreakdown = "showFullBreakdown"
         static let useLocalCalendar = "useLocalCalendar"
+        static let groupModelsAcrossProviders = "groupModelsAcrossProviders"
     }
 
     private let defaults: UserDefaults
@@ -419,6 +420,10 @@ public final class ReportingPreferences: ObservableObject {
         didSet { defaults.set(useLocalCalendar, forKey: Keys.useLocalCalendar) }
     }
 
+    @Published public var groupModelsAcrossProviders: Bool {
+        didSet { defaults.set(groupModelsAcrossProviders, forKey: Keys.groupModelsAcrossProviders) }
+    }
+
     public var displayTimeZone: TimeZone {
         if useLocalCalendar {
             return TimeZone(identifier: timeZoneIdentifier) ?? .current
@@ -450,6 +455,7 @@ public final class ReportingPreferences: ObservableObject {
         showProviderDetails = defaults.object(forKey: Keys.showProviderDetails) as? Bool ?? true
         showFullBreakdown = defaults.object(forKey: Keys.showFullBreakdown) as? Bool ?? false
         useLocalCalendar = defaults.object(forKey: Keys.useLocalCalendar) as? Bool ?? true
+        groupModelsAcrossProviders = defaults.object(forKey: Keys.groupModelsAcrossProviders) as? Bool ?? false
     }
 
     public var refreshIntervalLabel: String {

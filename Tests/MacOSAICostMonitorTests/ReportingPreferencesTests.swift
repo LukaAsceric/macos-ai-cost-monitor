@@ -26,6 +26,18 @@ final class ReportingPreferencesTests: XCTestCase {
 
         XCTAssertEqual(preferences.reportRange, .last30Days)
     }
+
+    func test_groupModelsAcrossProvidersDefaultsToFalseAndPersists() {
+        let defaults = UserDefaults(suiteName: "ReportingPreferencesTests.\(UUID().uuidString)")!
+        let preferences = ReportingPreferences(defaults: defaults)
+
+        XCTAssertFalse(preferences.groupModelsAcrossProviders)
+
+        preferences.groupModelsAcrossProviders = true
+
+        let reloaded = ReportingPreferences(defaults: defaults)
+        XCTAssertTrue(reloaded.groupModelsAcrossProviders)
+    }
 }
 
 final class ReportTimeRangeTests: XCTestCase {

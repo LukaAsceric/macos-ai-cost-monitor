@@ -129,12 +129,12 @@ public struct DashboardView: View {
                 Divider()
                 Text("By model")
                     .font(.subheadline.weight(.medium))
-                ForEach(preferences.showFullBreakdown ? cost.breakdowns : Array(cost.breakdowns.prefix(5))) { breakdown in
+                ForEach(displayedBreakdowns(cost)) { breakdown in
                     HStack {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(breakdown.model)
                                 .lineLimit(1)
-                            if preferences.showProviderDetails {
+                            if !preferences.groupModelsAcrossProviders && preferences.showProviderDetails {
                                 Text(breakdown.provider)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -150,6 +150,12 @@ public struct DashboardView: View {
                 updatedLabel(lastUpdated)
             }
         }
+    }
+
+    private func displayedBreakdowns(_ cost: DailyCost) -> [CostBreakdown] {
+        let list = preferences.showFullBreakdown ? cost.breakdowns : Array(cost.breakdowns.prefix(5))
+        guard preferences.groupModelsAcrossProviders else { return list }
+        return list.groupedByModel()
     }
 
     private func updatedLabel(_ date: Date) -> some View {

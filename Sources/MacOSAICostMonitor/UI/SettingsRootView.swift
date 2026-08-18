@@ -331,6 +331,7 @@ private struct ReportingSettingsSection: View {
                 Toggle("Show request counts", isOn: $preferences.showRequestDetails)
                 Toggle("Show token details", isOn: $preferences.showTokenDetails)
                 Toggle("Show provider names", isOn: $preferences.showProviderDetails)
+                Toggle("Group models across providers", isOn: $preferences.groupModelsAcrossProviders)
                 Toggle("Show full model list", isOn: $preferences.showFullBreakdown)
                 Toggle("Capture raw HTTP responses in Console", isOn: $preferences.captureRawHTTPResponses)
                 Text("Raw capture is off by default. When enabled, response bodies are held only in the in-memory console and may contain account activity details.")
@@ -349,6 +350,7 @@ private struct ReportingSettingsSection: View {
             .onChange(of: preferences.showRequestDetails) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.showTokenDetails) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.showProviderDetails) { _ in model.applyPreferenceChanges() }
+            .onChange(of: preferences.groupModelsAcrossProviders) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.showFullBreakdown) { _ in model.applyPreferenceChanges() }
         }
     }

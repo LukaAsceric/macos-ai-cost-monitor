@@ -136,3 +136,37 @@ public enum ActivityAggregator {
         )
     }
 }
+
+public extension Array where Element == CostBreakdown {
+    /// Merges breakdown rows that share the same model across multiple providers
+    /// into a single row. Used when the user opts out of splitting the model list
+    /// by provider. Token and request counts are summed; the provider field becomes
+    /// a sorted, de-duplicated list of the contributing providers.
+    func groupedByModel() -> [CostBreakdown] {
+        guard !isEmpty else { return [] }
+
+        var merged: [String: CostBreakdown] = [:]
+        for entry in self {
+            if let existing = merged[entry.model] {
+                let known = existing.provider.split(separator: ", ").map(String.init)
+                let distinct = Array(Set(known + [entry.provider])).sorted()
+                merged[entry.model] = CostBreakdown(
+                    model: entry.model,
+                    provider: distinct.joined(separator: ", "),
+                    usage: existing.usage + entry.usage,
+                    requests: existing.requests + entry.requests,
+                    promptTokens: existing.promptTokens + entry.promptTokens,
+                    completionTokens: existing.completionTokens + entry.completionTokens,
+                    reasoningTokens: existing.reasoningTokens + entry.reasoningTokens
+                )
+            } else {
+                merged[entry.model] = entry
+            }
+        }
+
+        return merged.values.sorted {
+            if $0.usage == $1.usage { return $0.id < $1.id }
+            return $0.usage > $1.usage
+        }
+    }
+}
