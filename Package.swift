@@ -4,11 +4,11 @@ import PackageDescription
 let package = Package(
     name: "MacOSAICostMonitor",
     platforms: [.macOS(.v13)],
-    dependencies: [
-        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.6")
-    ],
     products: [
         .executable(name: "MacOSAICostMonitor", targets: ["MacOSAICostMonitor"])
+    ],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.6")
     ],
     targets: [
         .executableTarget(
