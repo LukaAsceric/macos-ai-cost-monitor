@@ -148,7 +148,3 @@ swift test
 ## License
 
 [MIT License](LICENSE)
-
-## Reference
-
-README structure and presentation are inspired by [Stats](https://github.com/exelban/stats), a macOS menu-bar system monitor.
