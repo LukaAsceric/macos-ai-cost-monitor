@@ -26,15 +26,6 @@ macOS menu-bar monitoring for OpenRouter AI spend.
 
 AI Cost Monitor keeps current spend, request/session counts, remaining credits, and model-level usage one click away. It uses OpenRouter Analytics and stores the management key in the macOS Keychain.
 
-## Screenshots
-
-<a href="https://github.com/LukaAsceric/macos-ai-cost-monitor/releases">
-  <img src="docs/screenshots/menu-bar-popover.png" alt="AI Cost Monitor menu-bar popover" width="390">
-</a>
-<a href="https://github.com/LukaAsceric/macos-ai-cost-monitor/releases">
-  <img src="docs/screenshots/settings-overview.png" alt="AI Cost Monitor settings overview" width="900">
-</a>
-
 ## Installation
 
 ### Manual
@@ -157,3 +148,7 @@ swift test
 ## License
 
 [MIT License](LICENSE)
+
+## Reference
+
+README structure and presentation are inspired by [Stats](https://github.com/exelban/stats), a macOS menu-bar system monitor.
