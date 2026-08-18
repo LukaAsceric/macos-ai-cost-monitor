@@ -68,7 +68,7 @@ jobs:
           VERSION="${VERSION#v}" bash Scripts/package-release.sh
 
       - name: Upload workflow artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: MacOSAICostMonitor-${{ github.ref_name }}
           if-no-files-found: error

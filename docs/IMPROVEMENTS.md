@@ -31,6 +31,7 @@ Legende: `[ ]` offen · `[x]` umgesetzt · `[skipped]` bewusst verworfen.
       triggert derzeit bei jedem reinen Anzeige-Toggle (Gruppierung, Provider-Namen,
       Voll-Liste) einen Netzwerk-Refresh. Aufteilen in „Daten" vs. „Anzeige"-Änderungen,
       um unnötige Requests zu vermeiden.
+  _(umgesetzt: daten-relevante Präferenzen behalten Refresh; Anzeige-Toggles nicht mehr)_
 - [ ] **DoS-Guard für gruppierte Modellnamen** — extrem lange Modell-/Provider-Zeichenketten
       bei `lineLimit`/Importen; kein harter Fehlerzustand.
 - [ ] **Cache-Migration/Versionsmarker** — CachedUsage auf expliziten Format-Versions-Marker
@@ -38,7 +39,7 @@ Legende: `[ ]` offen · `[x]` umgesetzt · `[skipped]` bewusst verworfen.
 
 ## Automatisierung / CI
 
-- [ ] **`actions/upload-artifact@v4` Node-20-Deprecation** — bei nächster Gelegenheit
+- [x] **`actions/upload-artifact@v4` Node-20-Deprecation** — bei nächster Gelegenheit
       Major-Bump (v4 → v5) im Release-Workflow gegen die Laufzeit-Warnung.
 - [x] **Sparkle-Archiv-Layout-Pitfall dokumentiert** — Skill `macos-release-updates`.
 
