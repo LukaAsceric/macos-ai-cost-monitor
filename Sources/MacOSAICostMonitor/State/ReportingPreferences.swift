@@ -439,9 +439,9 @@ public final class ReportingPreferences: ObservableObject {
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         provider = ProviderOption(rawValue: defaults.string(forKey: Keys.provider) ?? "") ?? .openRouter
-        let legacyRange = ReportRange(rawValue: defaults.string(forKey: Keys.reportRange) ?? "") ?? .latestAvailableDay
+        let legacyRange = ReportRange(rawValue: defaults.string(forKey: Keys.reportRange) ?? "")
         let savedTimeRange = ReportTimeRange(rawValue: defaults.string(forKey: Keys.timeRange) ?? "")
-        let resolvedTimeRange = savedTimeRange ?? (legacyRange == .last30Days ? .last30CompletedDays : .latestAvailableDay)
+        let resolvedTimeRange = savedTimeRange ?? (legacyRange == .last30Days ? .last30CompletedDays : .today)
         timeRange = resolvedTimeRange
         reportRange = resolvedTimeRange.reportRange
         decimalPlaces = min(max(defaults.object(forKey: Keys.decimalPlaces) as? Int ?? 6, 2), 8)
