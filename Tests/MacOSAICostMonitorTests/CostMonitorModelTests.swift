@@ -145,12 +145,16 @@ final class CostMonitorModelTests: XCTestCase {
 
     func test_emptyRecentActivityPublishesNoData() async {
         let model = await MainActor.run {
-            CostMonitorModel(
+            let defaults = UserDefaults(suiteName: "CostMonitorModelTests.\(UUID().uuidString)")!
+            let preferences = ReportingPreferences(defaults: defaults)
+            preferences.timeRange = .latestAvailableDay
+            return CostMonitorModel(
                 provider: FakeUsageProvider(items: []),
                 secretStore: InMemorySecretStore(value: "test-key"),
                 cache: InMemoryCostCache(),
                 dateProvider: FixedUTCDateProvider(date: "2026-08-17"),
-                now: { Date(timeIntervalSince1970: 456) }
+                now: { Date(timeIntervalSince1970: 456) },
+                preferences: preferences
             )
         }
 
