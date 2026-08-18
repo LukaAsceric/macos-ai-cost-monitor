@@ -57,6 +57,18 @@ jobs:
           test -n "$SPARKLE_EDDSA_PRIVATE_KEY" || { echo "Missing SPARKLE_EDDSA_PRIVATE_KEY repository secret"; exit 1; }
           test -n "$SPARKLE_PUBLIC_ED_KEY" || { echo "Missing SPARKLE_PUBLIC_ED_KEY repository secret"; exit 1; }
 
+      - name: Generate shared release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RELEASE_NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+          gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+            -f "tag_name=$GITHUB_REF_NAME" \
+            -f "target_commitish=$GITHUB_SHA" \
+            --jq '.body' > "$RELEASE_NOTES_FILE"
+          printf '\n## Installation\n\nFollow the installation instructions in the repository README:\nhttps://github.com/%s#install-a-release\n' "$GITHUB_REPOSITORY" >> "$RELEASE_NOTES_FILE"
+          test -s "$RELEASE_NOTES_FILE"
+
       - name: Build, test, sign, package, and generate signed appcast
         env:
           VERSION: ${{ github.ref_name }}
@@ -64,6 +76,7 @@ jobs:
           SPARKLE_EDDSA_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
           SPARKLE_PUBLIC_ED_KEY: ${{ secrets.SPARKLE_PUBLIC_ED_KEY }}
           RELEASE_DOWNLOAD_BASE_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
+          RELEASE_NOTES_FILE: ${{ runner.temp }}/release-notes.md
         run: |
           VERSION="${VERSION#v}" bash Scripts/package-release.sh
 
@@ -83,12 +96,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          INSTALL_NOTE="Follow the installation instructions in the repository README: https://github.com/${GITHUB_REPOSITORY}#install-a-release"
           gh release create "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
             --title "AI Cost Monitor $GITHUB_REF_NAME" \
-            --generate-notes \
-            --notes "$INSTALL_NOTE" \
+            --verify-tag \
+            --notes-file "$RUNNER_TEMP/release-notes.md" \
             dist/*.dmg \
             dist/*.zip \
             dist/SHA256SUMS.txt \
