@@ -27,6 +27,18 @@ public enum UTCCalendar {
         return formatter.string(from: date)
     }
 
+    /// Formats a `yyyy-MM-dd` UTC day string into a readable label without shifting
+    /// timezone, so the UTC day bucket is never misrepresented.
+    public static func readableDayLabel(from string: String) -> String {
+        guard let date = date(from: string) else { return string }
+        let formatter = DateFormatter()
+        formatter.calendar = gregorian
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "EEE, MMM d, yyyy"
+        return formatter.string(from: date)
+    }
+
     public static func iso8601String(from date: Date) -> String {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

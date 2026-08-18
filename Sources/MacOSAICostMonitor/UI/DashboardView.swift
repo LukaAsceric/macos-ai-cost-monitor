@@ -28,8 +28,16 @@ public struct DashboardView: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("OpenRouter")
-                    .font(.headline)
+                HStack(spacing: 6) {
+                    Text("OpenRouter")
+                        .font(.headline)
+                    Text("UTC")
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(Color.secondary.opacity(0.15))
+                        .clipShape(Capsule())
+                }
                 Text(dateLabel)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -217,7 +225,7 @@ public struct DashboardView: View {
     }
 
     private func reportDateLabel(_ date: String) -> String {
-        date
+        UTCCalendar.readableDayLabel(from: date)
     }
 
     private var isRefreshing: Bool {

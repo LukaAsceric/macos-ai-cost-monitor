@@ -35,10 +35,11 @@ Legende: `[ ]` offen · `[x]` umgesetzt · `[skipped]` bewusst verworfen.
 
 - [ ] **Menüleisten-Tooltip mit stale/budget-Anreicherung** — bereits teils vorhanden;
       Konsistenz für alle States (`.noData` mit previous).
-- [ ] **`—` statt `…` bei initialem Loading ohne Cache** — Menüleiste zeigt im ersten
-      Lade-Zyklus ohne previous-Wert aktuell `…`; optional dezenteres Verhalten.
-- [ ] **Datum im Dashboard als lokal formatierte Angabe + UTC-Badge** — UTC-Primär,
-      dafür klare Lesbarkeit.
+- [x] **`—` statt `…` bei initialem Loading ohne Cache** — Menüleiste zeigt im ersten
+      Lade-Zyklus ohne previous-Wert jetzt `—` (konsistent zu den übrigen Zuständen).
+- [x] **Datum im Dashboard lesbar formatiert + UTC-Badge** — `readableDayLabel` formatiert
+      `yyyy-MM-dd` bei UTC (Bucket-verschiebungsfrei: keine lokale Zeitumstellung, die den
+      UTC-Tages-Bucket fehldarstellen würde); expliziter „UTC"-Badge im Header.
 
 ## Zuverlässigkeit / Korrektheit
 

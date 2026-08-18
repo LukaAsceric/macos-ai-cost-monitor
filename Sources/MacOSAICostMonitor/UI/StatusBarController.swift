@@ -109,7 +109,7 @@ public final class StatusBarController: NSObject {
             button.toolTip = "OpenRouter cost for \(cost.date) UTC: \(value)"
             button.setAccessibilityLabel("OpenRouter cost for \(cost.date) UTC: \(value)\(stale ? ", stale" : "")")
         case .loading(let previous):
-            button.title = previous.map { CostFormatStyle.headline(displayedUsage(for: $0), maximumFractionDigits: model.preferences.decimalPlaces) } ?? "…"
+            button.title = previous.map { CostFormatStyle.headline(displayedUsage(for: $0), maximumFractionDigits: model.preferences.decimalPlaces) } ?? "—"
             button.toolTip = "Refreshing OpenRouter usage"
             button.setAccessibilityLabel("Refreshing OpenRouter usage")
         case .failed(_, let previous, _):
