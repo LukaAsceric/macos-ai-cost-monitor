@@ -339,19 +339,12 @@ private struct ReportingSettingsSection: View {
                     .foregroundStyle(.secondary)
             }
             .onChange(of: preferences.timeRange) { _ in model.applyPreferenceChanges() }
-            .onChange(of: preferences.decimalPlaces) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.refreshInterval) { _ in model.applyPreferenceChanges() }
-            .onChange(of: preferences.includeByokInHeadline) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.captureRawHTTPResponses) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.useLocalCalendar) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.timeZoneIdentifier) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.customStart) { _ in model.applyPreferenceChanges() }
             .onChange(of: preferences.customEnd) { _ in model.applyPreferenceChanges() }
-            .onChange(of: preferences.showRequestDetails) { _ in model.applyPreferenceChanges() }
-            .onChange(of: preferences.showTokenDetails) { _ in model.applyPreferenceChanges() }
-            .onChange(of: preferences.showProviderDetails) { _ in model.applyPreferenceChanges() }
-            .onChange(of: preferences.groupModelsAcrossProviders) { _ in model.applyPreferenceChanges() }
-            .onChange(of: preferences.showFullBreakdown) { _ in model.applyPreferenceChanges() }
         }
     }
 }
