@@ -5,6 +5,7 @@ public protocol UsageProvider: Sendable {
     func recentActivity(apiKey: String) async throws -> [ActivityItem]
     func recentActivity(apiKey: String, captureRawResponse: Bool) async throws -> [ActivityItem]
     func queryAnalytics(_ query: AnalyticsQuery, apiKey: String, captureRawResponse: Bool) async throws -> AnalyticsQueryResult
+    func credits(apiKey: String, captureRawResponse: Bool) async throws -> OpenRouterCredits
 }
 
 public extension UsageProvider {
@@ -33,5 +34,9 @@ public extension UsageProvider {
             },
             truncated: false
         )
+    }
+
+    func credits(apiKey: String, captureRawResponse: Bool) async throws -> OpenRouterCredits {
+        throw OpenRouterClientError.invalidResponse
     }
 }

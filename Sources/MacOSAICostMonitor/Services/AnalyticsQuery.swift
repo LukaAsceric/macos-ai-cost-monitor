@@ -21,11 +21,11 @@ public struct AnalyticsTimeRange: Equatable, Sendable {
 public struct AnalyticsQuery: Equatable, Sendable {
     public let metrics: [String]
     public let dimensions: [String]
-    public let granularity: AnalyticsGranularity
+    public let granularity: AnalyticsGranularity?
     public let timeRange: AnalyticsTimeRange
     public let orderByField: String
     public let orderDirection: String
-    public let topN: Int
+    public let limit: Int
     public let includeEnrichment: Bool
 
     public static let defaultMetrics = [
@@ -54,16 +54,41 @@ public struct AnalyticsQuery: Equatable, Sendable {
             ),
             orderByField: "date",
             orderDirection: "asc",
-            topN: 10,
+            limit: 10,
             includeEnrichment: true
         )
     }
 
+    /// Requests one aggregate row per session. OpenRouter represents requests
+    /// without a session as the literal `none`; those rows are ignored by
+    /// `AnalyticsQueryResult.sessionCount`.
+    public static func sessionCount(
+        range: ReportTimeRange,
+        now: Date,
+        timeZone: TimeZone,
+        customStart: Date?,
+        customEnd: Date?
+    ) -> AnalyticsQuery {
+        let window = range.absoluteWindow(now: now, timeZone: timeZone, customStart: customStart, customEnd: customEnd)
+        return AnalyticsQuery(
+            metrics: ["request_count"],
+            dimensions: ["session_id"],
+            granularity: nil,
+            timeRange: AnalyticsTimeRange(
+                start: UTCCalendar.iso8601String(from: window.lowerBound),
+                end: UTCCalendar.iso8601String(from: window.upperBound)
+            ),
+            orderByField: "request_count",
+            orderDirection: "desc",
+            limit: 10_000,
+            includeEnrichment: false
+        )
+    }
+
     public func jsonObject() -> [String: Any] {
-        [
+        var object: [String: Any] = [
             "metrics": metrics,
             "dimensions": dimensions,
-            "granularity": granularity.rawValue,
             "time_range": [
                 "start": timeRange.start,
                 "end": timeRange.end
@@ -72,10 +97,13 @@ public struct AnalyticsQuery: Equatable, Sendable {
                 "field": orderByField,
                 "direction": orderDirection
             ],
-            "topN": topN,
-            "sortMetricDirection": "desc",
+            "limit": limit,
             "includeEnrichment": includeEnrichment
         ]
+        if let granularity {
+            object["granularity"] = granularity.rawValue
+        }
+        return object
     }
 }
 
@@ -88,6 +116,7 @@ public struct AnalyticsRow: Equatable, Sendable {
     public let requests: Int
     public let promptTokens: Int
     public let completionTokens: Int
+    public let sessionID: String?
 
     public init(
         timestamp: Date?,
@@ -97,7 +126,8 @@ public struct AnalyticsRow: Equatable, Sendable {
         byokUsage: Decimal,
         requests: Int,
         promptTokens: Int,
-        completionTokens: Int
+        completionTokens: Int,
+        sessionID: String? = nil
     ) {
         self.timestamp = timestamp
         self.model = model
@@ -107,6 +137,7 @@ public struct AnalyticsRow: Equatable, Sendable {
         self.requests = requests
         self.promptTokens = promptTokens
         self.completionTokens = completionTokens
+        self.sessionID = sessionID
     }
 
     public func asActivityItem() -> ActivityItem {
@@ -130,6 +161,15 @@ public struct AnalyticsQueryResult: Equatable, Sendable {
     public init(rows: [AnalyticsRow], truncated: Bool) {
         self.rows = rows
         self.truncated = truncated
+    }
+
+    public var sessionCount: Int {
+        Set(rows.compactMap { row in
+            guard let sessionID = row.sessionID,
+                  !sessionID.isEmpty,
+                  sessionID != "none" else { return nil }
+            return sessionID
+        }).count
     }
 
     public var series: [CostSeriesPoint] {
@@ -177,7 +217,8 @@ public enum AnalyticsResponseDecoder {
             byokUsage: decimal(raw["byok_usage"]) ?? decimal(raw["byok_usage_inference"]) ?? .zero,
             requests: int(raw["request_count"]) ?? int(raw["requests"]) ?? 0,
             promptTokens: int(raw["tokens_prompt"]) ?? int(raw["prompt_tokens"]) ?? 0,
-            completionTokens: int(raw["tokens_completion"]) ?? int(raw["completion_tokens"]) ?? 0
+            completionTokens: int(raw["tokens_completion"]) ?? int(raw["completion_tokens"]) ?? 0,
+            sessionID: string(raw["session_id"])
         )
     }
 

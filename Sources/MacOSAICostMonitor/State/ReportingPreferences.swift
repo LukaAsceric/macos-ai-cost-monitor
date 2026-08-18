@@ -325,8 +325,6 @@ public final class ReportingPreferences: ObservableObject {
         static let budgetEnabled = "budgetEnabled"
         static let budgetAmount = "budgetAmount"
         static let notifyOnBudget = "notifyOnBudget"
-        static let showTokenDetails = "showTokenDetails"
-        static let showRequestDetails = "showRequestDetails"
         static let showProviderDetails = "showProviderDetails"
         static let showFullBreakdown = "showFullBreakdown"
         static let useLocalCalendar = "useLocalCalendar"
@@ -400,13 +398,6 @@ public final class ReportingPreferences: ObservableObject {
         didSet { defaults.set(notifyOnBudget, forKey: Keys.notifyOnBudget) }
     }
 
-    @Published public var showTokenDetails: Bool {
-        didSet { defaults.set(showTokenDetails, forKey: Keys.showTokenDetails) }
-    }
-
-    @Published public var showRequestDetails: Bool {
-        didSet { defaults.set(showRequestDetails, forKey: Keys.showRequestDetails) }
-    }
 
     @Published public var showProviderDetails: Bool {
         didSet { defaults.set(showProviderDetails, forKey: Keys.showProviderDetails) }
@@ -450,8 +441,6 @@ public final class ReportingPreferences: ObservableObject {
         budgetEnabled = defaults.object(forKey: Keys.budgetEnabled) as? Bool ?? false
         budgetAmount = defaults.object(forKey: Keys.budgetAmount) as? Double ?? 5
         notifyOnBudget = defaults.object(forKey: Keys.notifyOnBudget) as? Bool ?? true
-        showTokenDetails = defaults.object(forKey: Keys.showTokenDetails) as? Bool ?? true
-        showRequestDetails = defaults.object(forKey: Keys.showRequestDetails) as? Bool ?? true
         showProviderDetails = defaults.object(forKey: Keys.showProviderDetails) as? Bool ?? true
         showFullBreakdown = defaults.object(forKey: Keys.showFullBreakdown) as? Bool ?? false
         useLocalCalendar = defaults.object(forKey: Keys.useLocalCalendar) as? Bool ?? true

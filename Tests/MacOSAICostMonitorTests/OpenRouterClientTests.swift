@@ -74,4 +74,20 @@ final class OpenRouterClientTests: XCTestCase {
         XCTAssertTrue(text.contains("visible"))
         XCTAssertFalse(text.contains("test-key"))
     }
+
+    func test_creditsRequestsManagementEndpointAndDecodesRemainingBalanceInputs() async throws {
+        TestURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertEqual(request.url?.path, "/api/v1/credits")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer test-management-key")
+            let response = "{\"data\":{\"total_credits\":100.5,\"total_usage\":25.75}}"
+            return (HTTPURLResponse(url: try XCTUnwrap(request.url), statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(response.utf8))
+        }
+
+        let client = OpenRouterClient(session: makeTestSession())
+        let credits = try await client.credits(apiKey: "test-management-key", captureRawResponse: false)
+
+        XCTAssertEqual(credits.totalCredits, Decimal(string: "100.5"))
+        XCTAssertEqual(credits.totalUsage, Decimal(string: "25.75"))
+    }
 }

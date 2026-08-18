@@ -328,8 +328,6 @@ private struct ReportingSettingsSection: View {
                     Text("UTC").tag("GMT")
                 }
                 Toggle("Include estimated BYOK in headline", isOn: $preferences.includeByokInHeadline)
-                Toggle("Show request counts", isOn: $preferences.showRequestDetails)
-                Toggle("Show token details", isOn: $preferences.showTokenDetails)
                 Toggle("Show provider names", isOn: $preferences.showProviderDetails)
                 Toggle("Group models across providers", isOn: $preferences.groupModelsAcrossProviders)
                 Toggle("Show full model list", isOn: $preferences.showFullBreakdown)

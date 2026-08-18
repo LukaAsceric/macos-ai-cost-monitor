@@ -91,6 +91,8 @@ public final class CostMonitorModel: ObservableObject {
     @Published public private(set) var lastUpdated: Date?
     @Published public private(set) var managementKeyStatus: ManagementKeyStatus = .unknown
     @Published public private(set) var lastRefreshSucceeded: Bool? = nil
+    @Published public private(set) var remainingCredits: Decimal?
+    @Published public private(set) var sessionCount: Int?
 
     public var currentReportTitle: String {
         preferences.timeRange.reportLabel
@@ -250,13 +252,14 @@ public final class CostMonitorModel: ObservableObject {
                 customStart: preferences.customStart,
                 customEnd: preferences.customEnd
             )
-            logStore.info("Analytics \(preferences.timeRange.title) \(query.granularity.rawValue) \(query.timeRange.start) → \(query.timeRange.end)")
+            logStore.info("Analytics \(preferences.timeRange.title) \(query.granularity?.rawValue ?? \"aggregate\") \(query.timeRange.start) → \(query.timeRange.end)")
             let result = try await provider.queryAnalytics(
                 query,
                 apiKey: key,
                 captureRawResponse: preferences.captureRawHTTPResponses
             )
             logStore.info("Received \(result.rows.count) analytics rows")
+            await refreshAccountSummary(apiKey: key)
             let reportDate = preferences.timeRange.reportLabel
             let cost = result.dailyCost(label: reportDate)
             series = result.series
@@ -303,6 +306,37 @@ public final class CostMonitorModel: ObservableObject {
                 staleSince: lastUpdated ?? now()
             )
             return false
+        }
+    }
+
+    private func refreshAccountSummary(apiKey: String) async {
+        do {
+            let credits = try await provider.credits(
+                apiKey: apiKey,
+                captureRawResponse: preferences.captureRawHTTPResponses
+            )
+            remainingCredits = max(credits.totalCredits - credits.totalUsage, .zero)
+        } catch {
+            logStore.warning("Credits summary unavailable")
+        }
+
+        let query = AnalyticsQuery.sessionCount(
+            range: preferences.timeRange,
+            now: now(),
+            timeZone: preferences.displayTimeZone,
+            customStart: preferences.customStart,
+            customEnd: preferences.customEnd
+        )
+        do {
+            let result = try await provider.queryAnalytics(
+                query,
+                apiKey: apiKey,
+                captureRawResponse: preferences.captureRawHTTPResponses
+            )
+            sessionCount = result.sessionCount
+            logStore.info("Received session summary for \(result.sessionCount) sessions")
+        } catch {
+            logStore.warning("Session summary unavailable")
         }
     }
 

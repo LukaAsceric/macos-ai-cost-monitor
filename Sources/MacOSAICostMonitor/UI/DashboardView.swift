@@ -31,18 +31,20 @@ public struct DashboardView: View {
                 HStack(spacing: 6) {
                     Text("OpenRouter")
                         .font(.headline)
+                }
+                HStack(spacing: 5) {
                     Text("UTC")
                         .font(.caption2.weight(.semibold))
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1)
                         .background(Color.secondary.opacity(0.15))
                         .clipShape(Capsule())
+                    Text("Display timezone: \(preferences.displayTimeZone.identifier)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
                 Text(dateLabel)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(preferences.useLocalCalendar ? "Display timezone: \(preferences.displayTimeZone.identifier)" : "OpenRouter time basis: UTC")
-                    .font(.caption2)
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -123,16 +125,12 @@ public struct DashboardView: View {
                     .frame(height: 72)
             }
             HStack(spacing: 12) {
-                if preferences.showRequestDetails {
-                    metric("Requests", value: CostFormatStyle.tokens(cost.requests))
-                }
-                if preferences.showTokenDetails {
-                    metric("Prompt", value: CostFormatStyle.tokens(cost.promptTokens))
-                    metric("Completion", value: CostFormatStyle.tokens(cost.completionTokens))
-                    metric("Reasoning", value: CostFormatStyle.tokens(cost.reasoningTokens))
-                }
+                metric("Requests", value: CostFormatStyle.tokens(cost.requests))
+                metric("Sessions", value: model.sessionCount.map(String.init) ?? "—")
+                metric("Credits", value: model.remainingCredits.map {
+                    CostFormatStyle.headline($0, maximumFractionDigits: preferences.decimalPlaces)
+                } ?? "—")
             }
-            metric("Estimated BYOK", value: CostFormatStyle.headline(cost.byokUsageInference, maximumFractionDigits: preferences.decimalPlaces))
             if !cost.breakdowns.isEmpty {
                 Divider()
                 Text("By model")
@@ -197,6 +195,25 @@ public struct DashboardView: View {
 
     private var footer: some View {
         HStack {
+            Menu {
+                ForEach(ReportTimeRange.Group.allCases) { group in
+                    Section(group.title) {
+                        ForEach(ReportTimeRange.options(in: group).filter(\.isSupported)) { range in
+                            Button {
+                                selectTimeRange(range)
+                            } label: {
+                                if preferences.timeRange == range {
+                                    Label(range.title, systemImage: "checkmark")
+                                } else {
+                                    Text(range.title)
+                                }
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Label(preferences.timeRange.badge, systemImage: "calendar")
+            }
             Button("Refresh now") {
                 Task { _ = await model.refresh() }
             }
@@ -207,6 +224,12 @@ public struct DashboardView: View {
         }
         .buttonStyle(.borderless)
         .font(.caption)
+    }
+
+    private func selectTimeRange(_ range: ReportTimeRange) {
+        guard range.isSupported else { return }
+        preferences.timeRange = range
+        model.applyPreferenceChanges()
     }
 
     private var dateLabel: String {
