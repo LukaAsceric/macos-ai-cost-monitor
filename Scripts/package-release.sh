@@ -78,7 +78,9 @@ if [[ -n "$SPARKLE_PUBLIC_ED_KEY" ]]; then
 fi
 
 SIGNING_IDENTITY="${CODESIGN_IDENTITY:--}"
-codesign --force --deep --sign "$SIGNING_IDENTITY" --timestamp=none "$APP_DIR"
+codesign --force --deep --sign "$SIGNING_IDENTITY" --timestamp=none "$APP_DIR/Contents/Frameworks/Sparkle.framework"
+codesign --force --sign "$SIGNING_IDENTITY" --timestamp=none "$APP_DIR/Contents/MacOS/$APP_NAME"
+codesign --force --sign "$SIGNING_IDENTITY" --timestamp=none "$APP_DIR"
 codesign --verify --deep --strict --verbose=2 "$APP_DIR"
 
 rm -f "$DIST_DIR/$APP_NAME-arm64" "$DIST_DIR/$APP_NAME-x86_64" "$DIST_DIR/$APP_NAME-universal"
