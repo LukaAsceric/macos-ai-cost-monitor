@@ -181,9 +181,7 @@ public struct DashboardView: View {
     }
 
     private func displayedUsage(for cost: DailyCost) -> Decimal {
-        model.preferences.includeByokInHeadline
-            ? cost.usage + cost.byokUsageInference
-            : cost.usage
+        cost.usage
     }
 
     private func emptyState(_ message: String, systemImage: String) -> some View {

@@ -319,7 +319,7 @@ public final class ReportingPreferences: ObservableObject {
         static let timeRange = "timeRange"
         static let decimalPlaces = "decimalPlaces"
         static let refreshInterval = "refreshInterval"
-        static let includeByok = "includeByokInHeadline"
+        static let dialogTimeRanges = "dialogTimeRanges"
         static let captureRawHTTPResponses = "captureRawHTTPResponses"
         static let timeZoneIdentifier = "displayTimeZoneIdentifier"
         static let customStart = "customRangeStart"
@@ -368,10 +368,6 @@ public final class ReportingPreferences: ObservableObject {
         didSet { defaults.set(refreshInterval, forKey: Keys.refreshInterval) }
     }
 
-    @Published public var includeByokInHeadline: Bool {
-        didSet { defaults.set(includeByokInHeadline, forKey: Keys.includeByok) }
-    }
-
     @Published public var captureRawHTTPResponses: Bool {
         didSet { defaults.set(captureRawHTTPResponses, forKey: Keys.captureRawHTTPResponses) }
     }
@@ -417,6 +413,22 @@ public final class ReportingPreferences: ObservableObject {
         didSet { defaults.set(groupModelsAcrossProviders, forKey: Keys.groupModelsAcrossProviders) }
     }
 
+    @Published public private(set) var dialogTimeRanges: Set<ReportTimeRange> {
+        didSet {
+            defaults.set(dialogTimeRanges.map(\.rawValue).sorted(), forKey: Keys.dialogTimeRanges)
+        }
+    }
+
+    public func setDialogTimeRange(_ range: ReportTimeRange, enabled: Bool) {
+        var updated = dialogTimeRanges
+        if enabled {
+            updated.insert(range)
+        } else if updated.count > 1 {
+            updated.remove(range)
+        }
+        dialogTimeRanges = updated
+    }
+
     public var displayTimeZone: TimeZone {
         if useLocalCalendar {
             return TimeZone(identifier: timeZoneIdentifier) ?? .current
@@ -434,7 +446,6 @@ public final class ReportingPreferences: ObservableObject {
         reportRange = resolvedTimeRange.reportRange
         decimalPlaces = min(max(defaults.object(forKey: Keys.decimalPlaces) as? Int ?? 6, 2), 8)
         refreshInterval = defaults.object(forKey: Keys.refreshInterval) as? TimeInterval ?? 300
-        includeByokInHeadline = defaults.object(forKey: Keys.includeByok) as? Bool ?? false
         captureRawHTTPResponses = defaults.object(forKey: Keys.captureRawHTTPResponses) as? Bool ?? false
         timeZoneIdentifier = defaults.string(forKey: Keys.timeZoneIdentifier) ?? TimeZone.current.identifier
         let resolvedCustomEnd = defaults.object(forKey: Keys.customEnd) as? Date ?? Date()
@@ -447,6 +458,10 @@ public final class ReportingPreferences: ObservableObject {
         showFullBreakdown = defaults.object(forKey: Keys.showFullBreakdown) as? Bool ?? false
         useLocalCalendar = defaults.object(forKey: Keys.useLocalCalendar) as? Bool ?? true
         groupModelsAcrossProviders = defaults.object(forKey: Keys.groupModelsAcrossProviders) as? Bool ?? false
+        let savedDialogRanges = (defaults.array(forKey: Keys.dialogTimeRanges) as? [String] ?? [])
+            .compactMap(ReportTimeRange.init(rawValue:))
+        let resolvedDialogRanges = savedDialogRanges.isEmpty ? Set(ReportTimeRange.allCases) : Set(savedDialogRanges)
+        dialogTimeRanges = resolvedDialogRanges.isEmpty ? [.latestAvailableDay] : resolvedDialogRanges
     }
 
     public var refreshIntervalLabel: String {
