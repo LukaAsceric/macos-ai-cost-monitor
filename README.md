@@ -43,16 +43,28 @@ is the same shape this app sends. `Today` in GMT+2 therefore starts at `22:00Z` 
 
 The retained settings window has:
 
-- **General / Overview** — live connection state, management-key status, current report, last refresh, cache/console activity, and quick actions
+- **General / Overview** — live connection state, management-key status, current report, last refresh, and cache/console activity
 - **Provider** — OpenRouter is enabled; other providers remain listed as coming soon
-- **Reporting** — ranges, timezone, decimals, raw HTTP capture
+- **Reporting** — menu-bar dialog range selection, timezone, decimals, and raw HTTP capture
 - **Alerts** — local budget threshold and optional macOS notification
-- **Release** — update status, signed update checks, and distribution requirements
+- **Release** — signed update status and automatic-update preference
 - **Console** — filter, copy, clear, sanitized log export
 
 General is intentionally an operational overview rather than a second settings form. Configuration lives in Provider, Reporting, and Alerts; General tells you what the monitor is doing right now and provides shortcuts to those areas.
 
 The window can only be closed. It cannot be minimized or maximized.
+
+### Settings overview
+
+The settings window provides a live overview of the connection, current report, and recent local activity:
+
+![AI Cost Monitor settings overview](docs/screenshots/settings-overview.png)
+
+### Menu-bar popover
+
+The menu-bar popover keeps the current spend, request/session counts, remaining credits, model breakdown, and selected time range visible at a glance:
+
+![AI Cost Monitor menu-bar popover](docs/screenshots/menu-bar-popover.png)
 
 ## Product features
 

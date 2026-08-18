@@ -28,6 +28,8 @@
     <real>86400</real>
     <key>SUAutomaticallyUpdate</key>
     <false/>
+    <key>SUAllowsAutomaticUpdates</key>
+    <true/>
     <key>SURequireSignedFeed</key>
     <true/>
     <key>SUVerifyUpdateBeforeExtraction</key>

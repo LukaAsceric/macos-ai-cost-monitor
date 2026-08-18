@@ -68,4 +68,19 @@ final class ReportingPreferencesTests: XCTestCase {
 
         XCTAssertEqual(preferences.dialogTimeRanges.count, 1)
     }
+
+    func test_newPreferencesDefaultToTodayAndPersistTheLastSelectedRange() {
+        let suiteName = "ReportingPreferencesTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let preferences = ReportingPreferences(defaults: defaults)
+
+        XCTAssertEqual(preferences.timeRange, .today)
+
+        preferences.timeRange = .previousMonth
+
+        let restored = ReportingPreferences(defaults: defaults)
+        XCTAssertEqual(restored.timeRange, .previousMonth)
+    }
 }

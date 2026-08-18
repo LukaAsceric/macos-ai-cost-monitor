@@ -264,11 +264,6 @@ private struct ReportingSettingsSection: View {
         self.preferences = model.preferences
     }
 
-    private func applyTimeRange(_ range: ReportTimeRange) {
-        guard range.isSupported else { return }
-        preferences.timeRange = range
-        model.applyPreferenceChanges()
-    }
 
     private var dialogRangesCard: some View {
         SettingsCard(title: "Menu-bar dialog ranges") {
@@ -292,26 +287,6 @@ private struct ReportingSettingsSection: View {
     var body: some View {
         SettingsSection(title: "Reporting", subtitle: "Control the range, cadence, precision, and diagnostic detail.") {
             dialogRangesCard
-            SettingsCard(title: "Time range") {
-                TimeRangeGroupView(title: "Relative ranges", ranges: [
-                    .past15Minutes, .past30Minutes, .pastHour, .past3Hours,
-                    .past24Hours, .past48Hours, .pastWeek, .pastMonth, .pastYear
-                ], preferences: preferences, onSelect: applyTimeRange)
-                TimeRangeGroupView(title: "Calendar ranges", ranges: [
-                    .today, .yesterday, .thisWeek, .previousWeek,
-                    .thisMonth, .previousMonth, .thisYear, .previousYear, .custom
-                ], preferences: preferences, onSelect: applyTimeRange)
-                TimeRangeGroupView(title: "Available from OpenRouter", ranges: [
-                    .latestAvailableDay, .last30CompletedDays
-                ], preferences: preferences, onSelect: applyTimeRange)
-                if preferences.timeRange == .custom {
-                    DatePicker("From", selection: $preferences.customStart)
-                    DatePicker("To", selection: $preferences.customEnd)
-                }
-                Text("Ranges are queried from POST /api/v1/analytics/query with an explicit time_range. Calendar ranges use the selected display timezone. Minute and hour ranges use matching analytics granularity.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
             SettingsCard(title: "Display and refresh") {
                 Picker("Refresh", selection: $preferences.refreshInterval) {
                     Text("Every minute").tag(TimeInterval(60))
@@ -389,7 +364,11 @@ private struct ReleaseSettingsSection: View {
         SettingsSection(title: "Release", subtitle: "Keep the app current with signed updates.") {
             SettingsCard(title: "Updates") {
                 LabeledContent("Update feed", value: UpdateConfiguration.feedURL.host ?? "GitHub")
-                LabeledContent("Automatic checks", value: updateManager.isConfigured ? "Enabled" : "Unavailable")
+                Toggle("Automatic updates", isOn: Binding(
+                    get: { updateManager.automaticUpdates },
+                    set: { updateManager.setAutomaticUpdates($0) }
+                ))
+                .disabled(!updateManager.canConfigureAutomaticUpdates)
                 Text(updateManager.status)
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -406,40 +385,6 @@ private struct ReleaseSettingsSection: View {
     }
 }
 
-@MainActor
-private struct TimeRangeGroupView: View {
-    let title: String
-    let ranges: [ReportTimeRange]
-    @ObservedObject var preferences: ReportingPreferences
-    let onSelect: (ReportTimeRange) -> Void
-
-    var body: some View {
-        Text(title)
-            .font(.subheadline.weight(.medium))
-            .padding(.top, 8)
-        ForEach(ranges, id: \.rawValue) { range in
-            HStack {
-                Text(range.badge)
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .frame(width: 34, alignment: .leading)
-                Text(range.title)
-                Spacer()
-                if !range.isSupported {
-                    Text("Not available")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                } else if preferences.timeRange == range {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(Color.accentColor)
-                }
-            }
-            .opacity(range.isSupported ? 1 : 0.45)
-            .contentShape(Rectangle())
-            .onTapGesture { onSelect(range) }
-        }
-    }
-}
 
 @MainActor
 private struct SettingsSection<Content: View>: View {

@@ -43,5 +43,6 @@ final class UpdateManagerTests: XCTestCase {
 
         XCTAssertFalse(manager.isConfigured)
         XCTAssertFalse(manager.canCheckForUpdates)
+        XCTAssertFalse(manager.automaticUpdates)
     }
 }

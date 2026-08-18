@@ -29,6 +29,8 @@ public enum UpdateConfiguration {
 public final class UpdateManager: NSObject, ObservableObject {
     @Published public private(set) var isConfigured = false
     @Published public private(set) var canCheckForUpdates = false
+    @Published public private(set) var automaticUpdates = false
+    @Published public private(set) var canConfigureAutomaticUpdates = false
     @Published public private(set) var status = "Updates are unavailable for this build."
 
     private let updaterController: SPUStandardUpdaterController?
@@ -65,7 +67,9 @@ public final class UpdateManager: NSObject, ObservableObject {
                 userDriverDelegate: nil
             )
             updaterController = controller
-            status = "Automatic update checks are available."
+            automaticUpdates = controller.updater.automaticallyDownloadsUpdates
+            canConfigureAutomaticUpdates = controller.updater.allowsAutomaticUpdates
+            status = "Signed updates are available."
         } else {
             updaterController = nil
             status = valid
@@ -89,6 +93,16 @@ public final class UpdateManager: NSObject, ObservableObject {
         guard let updaterController, updaterController.updater.canCheckForUpdates else { return }
         updaterController.checkForUpdates(nil)
         refreshAvailability()
+    }
+
+    public func setAutomaticUpdates(_ enabled: Bool) {
+        guard let updaterController, updaterController.updater.allowsAutomaticUpdates else { return }
+        guard updaterController.updater.automaticallyChecksForUpdates else {
+            automaticUpdates = false
+            return
+        }
+        updaterController.updater.automaticallyDownloadsUpdates = enabled
+        automaticUpdates = updaterController.updater.automaticallyDownloadsUpdates
     }
 
     public func refreshAvailability() {
