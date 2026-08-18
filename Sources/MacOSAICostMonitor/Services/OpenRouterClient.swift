@@ -30,9 +30,33 @@ public enum OpenRouterClientError: Error, Equatable, Sendable {
     }
 }
 
+public struct OpenRouterCredits: Equatable, Sendable {
+    public let totalCredits: Decimal
+    public let totalUsage: Decimal
+
+    public init(totalCredits: Decimal, totalUsage: Decimal) {
+        self.totalCredits = totalCredits
+        self.totalUsage = totalUsage
+    }
+}
+
 public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
     private struct ActivityEnvelope: Decodable {
         let data: [ActivityItem]
+    }
+
+    private struct CreditsEnvelope: Decodable {
+        let data: CreditsData
+    }
+
+    private struct CreditsData: Decodable {
+        let totalCredits: Decimal
+        let totalUsage: Decimal
+
+        private enum CodingKeys: String, CodingKey {
+            case totalCredits = "total_credits"
+            case totalUsage = "total_usage"
+        }
     }
 
     private let baseURL: URL
@@ -118,6 +142,53 @@ public final class OpenRouterClient: UsageProvider, @unchecked Sendable {
 
     public func recentActivity(apiKey: String, captureRawResponse: Bool) async throws -> [ActivityItem] {
         try await activity(for: "", apiKey: apiKey, captureRawResponse: captureRawResponse)
+    }
+
+    public func credits(apiKey: String, captureRawResponse: Bool) async throws -> OpenRouterCredits {
+        let url = baseURL.appendingPathComponent("credits")
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 30
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw OpenRouterClientError.invalidResponse
+            }
+            if captureRawResponse {
+                await logRawResponse(method: "GET", path: "/api/v1/credits", data: data, statusCode: httpResponse.statusCode)
+            }
+            switch httpResponse.statusCode {
+            case 200..<300:
+                break
+            case 401:
+                throw OpenRouterClientError.unauthorized
+            case 403:
+                throw OpenRouterClientError.forbidden
+            case 429:
+                throw OpenRouterClientError.rateLimited
+            case 500...599:
+                throw OpenRouterClientError.server(statusCode: httpResponse.statusCode)
+            default:
+                throw OpenRouterClientError.invalidResponse
+            }
+
+            do {
+                let decoded = try JSONDecoder().decode(CreditsEnvelope.self, from: data)
+                return OpenRouterCredits(totalCredits: decoded.data.totalCredits, totalUsage: decoded.data.totalUsage)
+            } catch {
+                throw OpenRouterClientError.decoding
+            }
+        } catch let error as OpenRouterClientError {
+            throw error
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            if Task.isCancelled { throw CancellationError() }
+            throw OpenRouterClientError.network
+        }
     }
 
     public func queryAnalytics(_ query: AnalyticsQuery, apiKey: String, captureRawResponse: Bool) async throws -> AnalyticsQueryResult {

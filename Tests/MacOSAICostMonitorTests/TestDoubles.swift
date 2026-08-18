@@ -147,6 +147,32 @@ final actor BlockingUsageProvider: UsageProvider {
         try await recentActivity(apiKey: apiKey)
     }
 
+    func credits(apiKey: String, captureRawResponse: Bool) async throws -> OpenRouterCredits {
+        throw OpenRouterClientError.invalidResponse
+    }
+
+    func queryAnalytics(_ query: AnalyticsQuery, apiKey: String, captureRawResponse: Bool) async throws -> AnalyticsQueryResult {
+        guard query.dimensions != ["session_id"] else {
+            return AnalyticsQueryResult(rows: [], truncated: false)
+        }
+        let items = try await recentActivity(apiKey: apiKey)
+        return AnalyticsQueryResult(
+            rows: items.map {
+                AnalyticsRow(
+                    timestamp: UTCCalendar.date(from: $0.date),
+                    model: $0.model,
+                    provider: $0.providerName,
+                    usage: $0.usage,
+                    byokUsage: $0.byokUsageInference ?? .zero,
+                    requests: $0.requests,
+                    promptTokens: $0.promptTokens,
+                    completionTokens: $0.completionTokens
+                )
+            },
+            truncated: false
+        )
+    }
+
     func waitUntilCalled() async {
         if called { return }
         await withCheckedContinuation { continuation in

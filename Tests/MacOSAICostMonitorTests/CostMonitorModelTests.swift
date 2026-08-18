@@ -99,7 +99,7 @@ final class CostMonitorModelTests: XCTestCase {
         XCTAssertEqual(state, .notConfigured)
     }
 
-    func test_successfulRefreshPublishesAggregatedCostAndCachesIt() async {
+    func test_successfulRefreshPublishesAggregatedCostAndAccountSummary() async {
         let item = ActivityItem(
             date: "2026-08-17",
             model: "openai/gpt-5",
@@ -113,7 +113,14 @@ final class CostMonitorModelTests: XCTestCase {
         let cache = InMemoryCostCache()
         let model = await MainActor.run {
             CostMonitorModel(
-                provider: FakeUsageProvider(items: [item]),
+                provider: FakeUsageProvider(
+                    items: [item],
+                    credits: OpenRouterCredits(totalCredits: Decimal(string: "100")!, totalUsage: Decimal(string: "25")!),
+                    sessionResult: AnalyticsQueryResult(rows: [
+                        AnalyticsRow(timestamp: nil, model: "unknown", provider: "OpenRouter", usage: .zero, byokUsage: .zero, requests: 1, promptTokens: 0, completionTokens: 0, sessionID: "session-1"),
+                        AnalyticsRow(timestamp: nil, model: "unknown", provider: "OpenRouter", usage: .zero, byokUsage: .zero, requests: 1, promptTokens: 0, completionTokens: 0, sessionID: "session-2")
+                    ], truncated: false)
+                ),
                 secretStore: InMemorySecretStore(value: "test-key"),
                 cache: cache,
                 dateProvider: FixedUTCDateProvider(date: "2026-08-17"),
@@ -131,6 +138,9 @@ final class CostMonitorModelTests: XCTestCase {
         XCTAssertEqual(fetchedAt, Date(timeIntervalSince1970: 123))
         XCTAssertFalse(stale)
         XCTAssertEqual(cache.load()?.cost, cost)
+        let summary = await MainActor.run { (model.remainingCredits, model.sessionCount) }
+        XCTAssertEqual(summary.0, Decimal(string: "75"))
+        XCTAssertEqual(summary.1, 2)
     }
 
     func test_emptyRecentActivityPublishesNoData() async {
@@ -302,10 +312,19 @@ final class CostMonitorModelTests: XCTestCase {
 private final class FakeUsageProvider: UsageProvider, @unchecked Sendable {
     let items: [ActivityItem]
     let error: Error?
+    let creditsValue: OpenRouterCredits?
+    let sessionResult: AnalyticsQueryResult?
 
-    init(items: [ActivityItem] = [], error: Error? = nil) {
+    init(
+        items: [ActivityItem] = [],
+        error: Error? = nil,
+        credits: OpenRouterCredits? = nil,
+        sessionResult: AnalyticsQueryResult? = nil
+    ) {
         self.items = items
         self.error = error
+        self.creditsValue = credits
+        self.sessionResult = sessionResult
     }
 
     func activity(for date: String, apiKey: String) async throws -> [ActivityItem] {
@@ -320,5 +339,33 @@ private final class FakeUsageProvider: UsageProvider, @unchecked Sendable {
 
     func recentActivity(apiKey: String, captureRawResponse: Bool) async throws -> [ActivityItem] {
         try await recentActivity(apiKey: apiKey)
+    }
+
+    func queryAnalytics(_ query: AnalyticsQuery, apiKey: String, captureRawResponse: Bool) async throws -> AnalyticsQueryResult {
+        if let error { throw error }
+        if query.dimensions == ["session_id"] {
+            return sessionResult ?? AnalyticsQueryResult(rows: [], truncated: false)
+        }
+        return AnalyticsQueryResult(
+            rows: items.map {
+                AnalyticsRow(
+                    timestamp: UTCCalendar.date(from: $0.date),
+                    model: $0.model,
+                    provider: $0.providerName,
+                    usage: $0.usage,
+                    byokUsage: $0.byokUsageInference ?? .zero,
+                    requests: $0.requests,
+                    promptTokens: $0.promptTokens,
+                    completionTokens: $0.completionTokens
+                )
+            },
+            truncated: false
+        )
+    }
+
+    func credits(apiKey: String, captureRawResponse: Bool) async throws -> OpenRouterCredits {
+        if let error { throw error }
+        guard let creditsValue else { throw OpenRouterClientError.invalidResponse }
+        return creditsValue
     }
 }
