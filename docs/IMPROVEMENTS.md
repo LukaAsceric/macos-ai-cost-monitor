@@ -39,8 +39,9 @@ Legende: `[ ]` offen · `[x]` umgesetzt · `[skipped]` bewusst verworfen.
 
 ## Automatisierung / CI
 
-- [x] **`actions/upload-artifact@v4` Node-20-Deprecation** — bei nächster Gelegenheit
-      Major-Bump (v4 → v5) im Release-Workflow gegen die Laufzeit-Warnung.
+- [x] **`actions/upload-artifact@v5`** — von v4 auf v5 angehoben. Die Node-20-Laufzeitwarnung
+      besteht jedoch weiterhin (v5 wird ebenso unter Node 24 erzwungen); rein kosmetische
+      Warnung ohne Funktionsfehler, bei Gelegenheit erneut prüfen.
 - [x] **Sparkle-Archiv-Layout-Pitfall dokumentiert** — Skill `macos-release-updates`.
 
 ## Nicht priorisiert / bewusst offen
