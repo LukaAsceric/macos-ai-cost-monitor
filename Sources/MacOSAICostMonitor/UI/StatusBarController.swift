@@ -106,8 +106,10 @@ public final class StatusBarController: NSObject {
         case .loaded(let cost, _, let stale):
             let value = CostFormatStyle.headline(displayedUsage(for: cost), maximumFractionDigits: model.preferences.decimalPlaces)
             button.title = value
-            button.toolTip = "OpenRouter cost for \(cost.date) UTC: \(value)"
-            button.setAccessibilityLabel("OpenRouter cost for \(cost.date) UTC: \(value)\(stale ? ", stale" : "")")
+            let budgetNote = model.budgetExceeded ? ", budget threshold reached" : ""
+            let staleNote = stale ? ", stale" : ""
+            button.toolTip = "OpenRouter cost for \(cost.date) UTC: \(value)\(staleNote)\(budgetNote)"
+            button.setAccessibilityLabel("OpenRouter cost for \(cost.date) UTC: \(value)\(staleNote)\(budgetNote)")
         case .loading(let previous):
             button.title = previous.map { CostFormatStyle.headline(displayedUsage(for: $0), maximumFractionDigits: model.preferences.decimalPlaces) } ?? "—"
             button.toolTip = "Refreshing OpenRouter usage"

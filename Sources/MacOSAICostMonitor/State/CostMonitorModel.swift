@@ -328,7 +328,11 @@ public final class CostMonitorModel: ObservableObject {
         let exceeded = displayed >= Decimal(preferences.budgetAmount)
         if exceeded && !budgetExceeded && preferences.notifyOnBudget {
             logStore.warning("Budget threshold reached: \(displayed) >= \(preferences.budgetAmount)")
-            BudgetNotifier.notify(amount: displayed, limit: Decimal(preferences.budgetAmount))
+            BudgetNotifier.notify(
+                amount: displayed,
+                limit: Decimal(preferences.budgetAmount),
+                decimalPlaces: preferences.decimalPlaces
+            )
         }
         budgetExceeded = exceeded
     }

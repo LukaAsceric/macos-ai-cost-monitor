@@ -29,4 +29,15 @@ final class BudgetNotifierTests: XCTestCase {
             bundleIdentifier: nil
         ))
     }
+
+    func test_formattedNotificationBodyRespectsDecimalPlaces() {
+        let amount = Decimal(string: "12.34567")!
+        let limit = Decimal(string: "10.0")!
+
+        let body2Decimals = BudgetNotifier.formattedNotificationBody(amount: amount, limit: limit, decimalPlaces: 2)
+        XCTAssertEqual(body2Decimals, "Spend $12.35 reached the configured budget of $10.00.")
+
+        let body4Decimals = BudgetNotifier.formattedNotificationBody(amount: amount, limit: limit, decimalPlaces: 4)
+        XCTAssertEqual(body4Decimals, "Spend $12.3457 reached the configured budget of $10.00.")
+    }
 }

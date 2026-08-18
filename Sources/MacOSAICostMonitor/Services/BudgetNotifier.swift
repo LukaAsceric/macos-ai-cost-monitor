@@ -8,7 +8,13 @@ public enum BudgetNotifier {
         bundleURL.pathExtension.lowercased() == "app" && bundleIdentifier != nil && !(bundleIdentifier?.isEmpty ?? true)
     }
 
-    public static func notify(amount: Decimal, limit: Decimal, bundle: Bundle = .main) {
+    public static func formattedNotificationBody(amount: Decimal, limit: Decimal, decimalPlaces: Int = 2) -> String {
+        let formattedAmount = CostFormatStyle.headline(amount, maximumFractionDigits: decimalPlaces)
+        let formattedLimit = CostFormatStyle.headline(limit, maximumFractionDigits: decimalPlaces)
+        return "Spend \(formattedAmount) reached the configured budget of \(formattedLimit)."
+    }
+
+    public static func notify(amount: Decimal, limit: Decimal, decimalPlaces: Int = 2, bundle: Bundle = .main) {
         #if canImport(UserNotifications)
         guard isSupportedAppBundle(
             bundleURL: bundle.bundleURL,
@@ -21,7 +27,7 @@ public enum BudgetNotifier {
             guard granted else { return }
             let content = UNMutableNotificationContent()
             content.title = "AI Cost Monitor"
-            content.body = "Spend \(amount) reached the configured budget of \(limit)."
+            content.body = formattedNotificationBody(amount: amount, limit: limit, decimalPlaces: decimalPlaces)
             let request = UNNotificationRequest(
                 identifier: "budget-threshold",
                 content: content,

@@ -20,9 +20,17 @@ Legende: `[ ]` offen · `[x]` umgesetzt · `[skipped]` bewusst verworfen.
 - [x] **Display-only-Präferenzen vom Refresh entkoppelt** — `applyPreferenceChanges`
       triggert bei dem reinen Anzeige-Toggles (Gruppierung, Provider-Namen, Voll-Liste,
       Token-/Request-Details) keinen Netzwerk-Request mehr.
-- [x] **`actions/upload-artifact@v5`** — von v4 auf v5 angehoben. Die Node-20-Laufzeitwarnung
-      besteht jedoch weiterhin (v5 wird ebenso unter Node 24 erzwungen); rein kosmetische
-      Warnung ohne Funktionsfehler, bei Gelegenheit erneut prüfen.
+- [x] **Budget-Notification Nachkommastellen** — `BudgetNotifier` formatiert Beträge
+      und Grenzwerte nun konsistent mit den konfigurierten `decimalPlaces` aus den
+      Reporting-Einstellungen statt `String(describing:)`.
+- [x] **Menüleisten-Tooltip mit Budget- und Stale-Hinweis** — Status-Bar-Tooltip
+      informiert nun direkt über überschrittenes Budget und Cache-Zustand.
+- [x] **`—` statt `…` bei initialem Loading ohne Cache** — Menüleiste zeigt im ersten
+      Lade-Zyklus ohne previous-Wert jetzt `—` (konsistent zu den übrigen Zuständen).
+- [x] **Datum im Dashboard lesbar formatiert + UTC-Badge** — `readableDayLabel` formatiert
+      `yyyy-MM-dd` bei UTC (Bucket-verschiebungsfrei: keine lokale Zeitumstellung, die den
+      UTC-Tages-Bucket fehldarstellen würde); expliziter „UTC"-Badge im Header.
+- [x] **`actions/upload-artifact@v5`** — von v4 auf v5 angehoben.
 - [x] **Sparkle-Archiv-Layout-Pitfall dokumentiert** — Skill `macos-release-updates`.
 
 ## Bereits vorhanden (nur verifiziert, kein Handlungsbedarf)
@@ -31,17 +39,7 @@ Legende: `[ ]` offen · `[x]` umgesetzt · `[skipped]` bewusst verworfen.
       `UsageCache.load()` verwirft jede Datei mit `version != 1` (Test
       `test_rejectsUnsupportedCacheVersion` vorhanden).
 
-## UX / Anzeige
-
-- [ ] **Menüleisten-Tooltip mit stale/budget-Anreicherung** — bereits teils vorhanden;
-      Konsistenz für alle States (`.noData` mit previous).
-- [x] **`—` statt `…` bei initialem Loading ohne Cache** — Menüleiste zeigt im ersten
-      Lade-Zyklus ohne previous-Wert jetzt `—` (konsistent zu den übrigen Zuständen).
-- [x] **Datum im Dashboard lesbar formatiert + UTC-Badge** — `readableDayLabel` formatiert
-      `yyyy-MM-dd` bei UTC (Bucket-verschiebungsfrei: keine lokale Zeitumstellung, die den
-      UTC-Tages-Bucket fehldarstellen würde); expliziter „UTC"-Badge im Header.
-
-## Zuverlässigkeit / Korrektheit
+## Offen / Nächste Schritte
 
 - [ ] **DoS-Guard für lange Modell-/Provider-Strings** — extrem lange Zeichenketten
       bei `lineLimit`/Importen; kein harter Fehlerzustand.
