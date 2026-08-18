@@ -13,6 +13,7 @@ APP_DIR="$DIST_DIR/$APP_NAME.app"
 SPARKLE_PUBLIC_ED_KEY="${SPARKLE_PUBLIC_ED_KEY:-}"
 SPARKLE_BIN="${SPARKLE_BIN:-}"
 RELEASE_DOWNLOAD_BASE_URL="${RELEASE_DOWNLOAD_BASE_URL:-}"
+RELEASE_NOTES_FILE="${RELEASE_NOTES_FILE:-}"
 
 rm -rf "$DIST_DIR" "$SCRATCH_ROOT"
 mkdir -p "$DIST_DIR" "$SCRATCH_ROOT"
@@ -130,13 +131,19 @@ if [[ -n "$SPARKLE_BIN" && -n "$RELEASE_DOWNLOAD_BASE_URL" ]]; then
     mkdir -p "$UPDATE_INPUT_DIR"
     cp "$ZIP_PATH" "$UPDATE_INPUT_DIR/"
     UPDATE_NOTES_NAME="${APP_NAME}-${VERSION}-macOS.md"
-    cat > "$UPDATE_INPUT_DIR/$UPDATE_NOTES_NAME" <<NOTE
+    if [[ -n "$RELEASE_NOTES_FILE" ]]; then
+        test -f "$RELEASE_NOTES_FILE"
+        cp "$RELEASE_NOTES_FILE" "$UPDATE_INPUT_DIR/$UPDATE_NOTES_NAME"
+    else
+        cat > "$UPDATE_INPUT_DIR/$UPDATE_NOTES_NAME" <<NOTE
 ## What's new
 
-See the [release description](https://github.com/LukaAsceric/macos-ai-cost-monitor/releases/tag/v$VERSION) for the release notes.
+See the release description for the release notes.
 
-Installation instructions are maintained in the repository [README](https://github.com/LukaAsceric/macos-ai-cost-monitor#install-a-release).
+Installation instructions are maintained in the repository README:
+https://github.com/LukaAsceric/macos-ai-cost-monitor#install-a-release
 NOTE
+    fi
 
     printf '%s\n' "$SPARKLE_EDDSA_PRIVATE_KEY" | \
         "$SPARKLE_BIN/generate_appcast" \
