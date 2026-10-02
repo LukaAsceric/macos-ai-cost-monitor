@@ -27,6 +27,32 @@ public struct AnalyticsQuery: Equatable, Sendable {
     public let orderDirection: String
     public let limit: Int
     public let includeEnrichment: Bool
+    /// IANA identifier of the timezone the requested window and its buckets are
+    /// cut against. Providers that bucket by wall-clock time use this; OpenRouter
+    /// ignores it and keeps its UTC buckets.
+    public let timeZoneIdentifier: String?
+
+    public init(
+        metrics: [String],
+        dimensions: [String],
+        granularity: AnalyticsGranularity?,
+        timeRange: AnalyticsTimeRange,
+        orderByField: String,
+        orderDirection: String,
+        limit: Int,
+        includeEnrichment: Bool,
+        timeZoneIdentifier: String? = nil
+    ) {
+        self.metrics = metrics
+        self.dimensions = dimensions
+        self.granularity = granularity
+        self.timeRange = timeRange
+        self.orderByField = orderByField
+        self.orderDirection = orderDirection
+        self.limit = limit
+        self.includeEnrichment = includeEnrichment
+        self.timeZoneIdentifier = timeZoneIdentifier
+    }
 
     public static let defaultMetrics = [
         "total_usage",
@@ -55,7 +81,8 @@ public struct AnalyticsQuery: Equatable, Sendable {
             orderByField: "date",
             orderDirection: "asc",
             limit: 10,
-            includeEnrichment: true
+            includeEnrichment: true,
+            timeZoneIdentifier: timeZone.identifier
         )
     }
 

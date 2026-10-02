@@ -3,6 +3,7 @@ import Foundation
 
 public enum ProviderOption: String, CaseIterable, Codable, Sendable, Identifiable, Hashable {
     case openRouter
+    case primalabs
     case openAI
     case anthropic
     case googleAI
@@ -20,6 +21,7 @@ public enum ProviderOption: String, CaseIterable, Codable, Sendable, Identifiabl
     public var title: String {
         switch self {
         case .openRouter: return "OpenRouter"
+        case .primalabs: return "PrimaLabs"
         case .openAI: return "OpenAI"
         case .anthropic: return "Anthropic"
         case .googleAI: return "Google AI"
@@ -34,7 +36,51 @@ public enum ProviderOption: String, CaseIterable, Codable, Sendable, Identifiabl
         }
     }
 
-    public var isEnabled: Bool { self == .openRouter }
+    public var isEnabled: Bool { self == .openRouter || self == .primalabs }
+
+    public var credentialCardTitle: String {
+        switch self {
+        case .primalabs: return "PrimaLabs access token"
+        default: return "\(title) management key"
+        }
+    }
+
+    public var credentialHelp: String {
+        switch self {
+        case .primalabs:
+            return "Copy the Bearer token from an authorized request to dashboard.primalabs.ai (browser developer tools → Network). The token is stored in macOS Keychain and never written to logs. It expires — save a fresh one when the dashboard rejects it."
+        default:
+            return "Create a management API key with activity access. The key is stored in macOS Keychain and never written to logs."
+        }
+    }
+
+    public var credentialPlaceholder: String {
+        switch self {
+        case .primalabs: return "Bearer token"
+        default: return "Management API key"
+        }
+    }
+
+    public var credentialSaveTitle: String {
+        switch self {
+        case .primalabs: return "Save token"
+        default: return "Save key"
+        }
+    }
+
+    public var credentialDeleteTitle: String {
+        switch self {
+        case .primalabs: return "Delete saved token"
+        default: return "Delete saved key"
+        }
+    }
+
+    public var keychainAccount: String {
+        switch self {
+        case .primalabs: return "primalabs-dashboard-token"
+        default: return "openrouter-management-key"
+        }
+    }
 }
 
 public enum ReportRange: String, CaseIterable, Codable, Sendable, Identifiable, Hashable {

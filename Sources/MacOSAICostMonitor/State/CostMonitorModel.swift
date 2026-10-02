@@ -46,13 +46,13 @@ public enum MonitorState: Sendable, Equatable {
     public var statusMessage: String? {
         switch self {
         case .notConfigured:
-            return "Add an OpenRouter management key in Settings."
+            return "Add a credential in Settings → Provider."
         case .loading(_):
-            return "Refreshing OpenRouter usage…"
+            return "Refreshing usage…"
         case .loaded(_, _, let stale):
             return stale ? "Showing a stale value." : nil
         case .noData(_, _, _):
-            return "OpenRouter has not published activity for this completed UTC day yet."
+            return "The provider has not published activity for this completed UTC day yet."
         case .failed(let message, _, _):
             return message
         }
@@ -61,6 +61,17 @@ public enum MonitorState: Sendable, Equatable {
 
 public protocol UTCDateProviding: Sendable {
     func currentDateString() -> String
+}
+
+/// The usage client and secret storage one provider runs against.
+public struct ProviderEnvironment: Sendable {
+    public let usage: any UsageProvider
+    public let secrets: any SecretStore
+
+    public init(usage: any UsageProvider, secrets: any SecretStore) {
+        self.usage = usage
+        self.secrets = secrets
+    }
 }
 
 /// Supplies the latest completed UTC calendar day because OpenRouter's activity
@@ -110,8 +121,7 @@ public final class CostMonitorModel: ObservableObject {
     @Published public private(set) var budgetExceeded = false
     @Published public private(set) var lastLogExportURL: URL?
 
-    private let provider: any UsageProvider
-    private let secretStore: any SecretStore
+    private let environmentByProvider: (ProviderOption) -> ProviderEnvironment
     private let cache: any CostCache
     private let dateProvider: any UTCDateProviding
     private let now: @Sendable () -> Date
@@ -122,6 +132,7 @@ public final class CostMonitorModel: ObservableObject {
     private var managementKey: String?
     private var didLoadManagementKey = false
     private var managementKeyErrorMessage: String?
+    private var loadedProvider: ProviderOption?
 
     public init(
         provider: any UsageProvider,
@@ -130,10 +141,11 @@ public final class CostMonitorModel: ObservableObject {
         dateProvider: any UTCDateProviding = SystemUTCDateProvider(),
         now: @escaping @Sendable () -> Date = { Date() },
         preferences: ReportingPreferences = ReportingPreferences(),
-        logStore: AppLogStore = AppLogStore()
+        logStore: AppLogStore = AppLogStore(),
+        environmentByProvider: ((ProviderOption) -> ProviderEnvironment)? = nil
     ) {
-        self.provider = provider
-        self.secretStore = secretStore
+        let defaultEnvironment = ProviderEnvironment(usage: provider, secrets: secretStore)
+        self.environmentByProvider = environmentByProvider ?? { _ in defaultEnvironment }
         self.cache = cache
         self.dateProvider = dateProvider
         self.now = now
@@ -169,7 +181,8 @@ public final class CostMonitorModel: ObservableObject {
     public func saveManagementKey(_ key: String) async throws {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        try secretStore.save(trimmed)
+        try activeEnvironment.secrets.save(trimmed)
+        loadedProvider = preferences.provider
         managementKey = trimmed
         didLoadManagementKey = true
         managementKeyErrorMessage = nil
@@ -178,7 +191,8 @@ public final class CostMonitorModel: ObservableObject {
     }
 
     public func deleteManagementKey() throws {
-        try secretStore.delete()
+        try activeEnvironment.secrets.delete()
+        loadedProvider = preferences.provider
         managementKey = nil
         didLoadManagementKey = true
         managementKeyErrorMessage = nil
@@ -208,12 +222,24 @@ public final class CostMonitorModel: ObservableObject {
         Task { _ = await refresh() }
     }
 
+    private var activeEnvironment: ProviderEnvironment {
+        environmentByProvider(preferences.provider)
+    }
+
     private func performRefresh() async -> Bool {
         let previous = state.dailyCost
+        if loadedProvider != preferences.provider {
+            // Credentials are stored per provider; switching providers must re-read
+            // the other provider's secret instead of reusing the cached one.
+            loadedProvider = preferences.provider
+            didLoadManagementKey = false
+            managementKey = nil
+            managementKeyErrorMessage = nil
+        }
         if !didLoadManagementKey {
             logStore.debug("Reading management key from Keychain")
             do {
-                managementKey = try secretStore.read()
+                managementKey = try activeEnvironment.secrets.read()
                 didLoadManagementKey = true
                 managementKeyErrorMessage = nil
                 logStore.info(managementKey == nil ? "No management key configured" : "Management key loaded")
@@ -221,7 +247,7 @@ public final class CostMonitorModel: ObservableObject {
                 managementKeyErrorMessage = error.userMessage
                 logStore.error("Keychain read failed: \(error.userMessage)")
             } catch {
-                managementKeyErrorMessage = "The OpenRouter key could not be read from Keychain."
+                managementKeyErrorMessage = "The \(preferences.provider.title) credential could not be read from Keychain."
                 logStore.error("Keychain read failed")
             }
         }
@@ -243,7 +269,7 @@ public final class CostMonitorModel: ObservableObject {
         managementKeyStatus = .configured
         lastRefreshSucceeded = nil
         state = .loading(previous: previous)
-        logStore.info("Querying OpenRouter analytics")
+        logStore.info("Querying \(preferences.provider.title) analytics")
         do {
             let query = AnalyticsQuery.make(
                 range: preferences.timeRange,
@@ -254,7 +280,7 @@ public final class CostMonitorModel: ObservableObject {
             )
             let granularity = query.granularity?.rawValue ?? "aggregate"
             logStore.info("Analytics \(preferences.timeRange.title) \(granularity) \(query.timeRange.start) → \(query.timeRange.end)")
-            let result = try await provider.queryAnalytics(
+            let result = try await activeEnvironment.usage.queryAnalytics(
                 query,
                 apiKey: key,
                 captureRawResponse: preferences.captureRawHTTPResponses
@@ -295,14 +321,19 @@ public final class CostMonitorModel: ObservableObject {
             return false
         } catch let error as OpenRouterClientError {
             lastRefreshSucceeded = false
-            logStore.error("OpenRouter request failed: \(error.userMessage)")
+            logStore.error("\(preferences.provider.title) request failed: \(error.userMessage)")
+            state = .failed(message: error.userMessage, previous: previous, staleSince: lastUpdated ?? now())
+            return false
+        } catch let error as PrimaLabsClientError {
+            lastRefreshSucceeded = false
+            logStore.error("\(preferences.provider.title) request failed: \(error.userMessage)")
             state = .failed(message: error.userMessage, previous: previous, staleSince: lastUpdated ?? now())
             return false
         } catch {
             lastRefreshSucceeded = false
-            logStore.error("OpenRouter request failed: network or decoding error")
+            logStore.error("\(preferences.provider.title) request failed: network or decoding error")
             state = .failed(
-                message: "OpenRouter could not be reached. Showing the last known value.",
+                message: "The provider could not be reached. Showing the last known value.",
                 previous: previous,
                 staleSince: lastUpdated ?? now()
             )
@@ -312,7 +343,7 @@ public final class CostMonitorModel: ObservableObject {
 
     private func refreshAccountSummary(apiKey: String) async {
         do {
-            let credits = try await provider.credits(
+            let credits = try await activeEnvironment.usage.credits(
                 apiKey: apiKey,
                 captureRawResponse: preferences.captureRawHTTPResponses
             )
@@ -329,7 +360,7 @@ public final class CostMonitorModel: ObservableObject {
             customEnd: preferences.customEnd
         )
         do {
-            let result = try await provider.queryAnalytics(
+            let result = try await activeEnvironment.usage.queryAnalytics(
                 query,
                 apiKey: apiKey,
                 captureRawResponse: preferences.captureRawHTTPResponses

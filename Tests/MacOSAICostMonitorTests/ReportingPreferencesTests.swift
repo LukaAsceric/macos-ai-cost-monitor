@@ -4,6 +4,16 @@ import XCTest
 
 @MainActor
 final class ReportingPreferencesTests: XCTestCase {
+    func test_primalabsProviderIsEnabledWithDedicatedCredentialCopy() {
+        XCTAssertEqual(ProviderOption.primalabs.title, "PrimaLabs")
+        XCTAssertTrue(ProviderOption.primalabs.isEnabled)
+        XCTAssertEqual(ProviderOption.primalabs.keychainAccount, "primalabs-dashboard-token")
+        XCTAssertEqual(ProviderOption.openRouter.keychainAccount, "openrouter-management-key")
+        XCTAssertFalse(ProviderOption.openAI.isEnabled)
+        XCTAssertEqual(ProviderOption.primalabs.credentialPlaceholder, "Bearer token")
+        XCTAssertEqual(ProviderOption.openRouter.credentialPlaceholder, "Management API key")
+    }
+
     func test_unsupportedTimeRangeFallsBackToLatestAvailableDay() {
         let defaults = UserDefaults(suiteName: "ReportingPreferencesTests.\(UUID().uuidString)")!
         let preferences = ReportingPreferences(defaults: defaults)

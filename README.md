@@ -43,11 +43,11 @@ Download the latest release from the [Releases](https://github.com/LukaAsceric/m
 
 - macOS 13 Ventura or later
 - Apple Silicon or Intel Mac
-- OpenRouter management API key with analytics/activity access
+- An OpenRouter management API key with analytics/activity access, or a PrimaLabs dashboard token
 
 ### Security
 
-The management key is stored in the macOS Keychain. It is not included in the app, DMG, ZIP, logs, cache, or release artifacts.
+Credentials are stored per provider in the macOS Keychain. They are not included in the app, DMG, ZIP, logs, cache, or release artifacts.
 
 ### Build locally
 
@@ -63,6 +63,7 @@ Use the signed `.app` for normal operation. `swift run` can change the developme
 ## Features
 
 - Menu-bar popover with current spend and sparkline
+- OpenRouter and PrimaLabs as usage providers, each with its own credential
 - Requests, Sessions, and remaining Credits in the headline
 - Per-model cost breakdown with optional provider grouping
 - Configurable menu-bar time-range list; new installations start with `Today`
@@ -81,7 +82,7 @@ The General page is an operational overview of the current connection, selected 
 
 ### Provider
 
-OpenRouter is currently supported. Other providers remain visible as disabled catalogue entries for future integrations.
+OpenRouter and PrimaLabs are supported. Other providers remain visible as disabled catalogue entries for future integrations. Each provider keeps its own credential in the Keychain, so switching providers never overwrites the other provider's saved secret.
 
 ### Reporting
 
@@ -114,6 +115,17 @@ POST https://openrouter.ai/api/v1/analytics/query
 A management key is required. Regular inference keys and OpenRouter OAuth PKCE keys do not provide the required analytics access.
 
 The app also uses `GET /api/v1/credits` for the remaining Credits headline and an analytics session query for the Sessions count. Sessionless requests are excluded from the session count.
+
+## PrimaLabs
+
+PrimaLabs serves models over an OpenAI-compatible inference API (`https://api.primalabs.ai/v1`) but exposes no public usage endpoint. The monitor reads the same usage data the PrimaLabs dashboard shows, through the dashboard API:
+
+```text
+GET https://dashboard.primalabs.ai/api/v1/litellm/usage?start=…&end=…&tz=…&grain=…
+GET https://dashboard.primalabs.ai/api/v1/billing/wallet
+```
+
+The credential is the dashboard session token (`Authorization: Bearer …`) copied from an authorized request in the dashboard — for example via the browser's developer tools. The token expires; when the dashboard rejects it, save a fresh one. Usage buckets map directly onto spend, request, and token counts in the report, and the prepaid wallet supplies the remaining Credits headline. PrimaLabs has no session concept, so the Sessions count stays empty for this provider.
 
 ## Updates
 

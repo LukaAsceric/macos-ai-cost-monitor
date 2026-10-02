@@ -161,7 +161,7 @@ private struct GeneralSettingsSection: View {
     private var statusDetail: String {
         switch model.state {
         case .notConfigured: return "Add a management key in Provider to start querying analytics."
-        case .loading: return "Querying OpenRouter analytics…"
+        case .loading: return "Querying \(model.preferences.provider.title) analytics…"
         case .loaded: return "Analytics query completed successfully."
         case .noData: return "The query completed, but no rows matched this range."
         case .failed(let message, _, _): return message
@@ -215,19 +215,19 @@ private struct ProviderSettingsSection: View {
                 }
             }
 
-            if preferences.provider == .openRouter {
-                SettingsCard(title: "OpenRouter management key") {
-                    Text("Create a management API key with activity access. The key is stored in macOS Keychain and never written to logs.")
+            if preferences.provider.isEnabled {
+                SettingsCard(title: preferences.provider.credentialCardTitle) {
+                    Text(preferences.provider.credentialHelp)
                         .font(.callout)
                         .foregroundStyle(.secondary)
-                    SecureField("Management API key", text: $key)
+                    SecureField(preferences.provider.credentialPlaceholder, text: $key)
                         .textFieldStyle(.roundedBorder)
                     HStack {
-                        Button("Save key") { save() }
+                        Button(preferences.provider.credentialSaveTitle) { save() }
                             .disabled(key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        Button("Delete saved key", role: .destructive) {
+                        Button(preferences.provider.credentialDeleteTitle, role: .destructive) {
                             do { try model.deleteManagementKey() }
-                            catch { errorMessage = "The key could not be deleted from Keychain." }
+                            catch { errorMessage = "The credential could not be deleted from Keychain." }
                         }
                         Spacer()
                     }
@@ -248,7 +248,7 @@ private struct ProviderSettingsSection: View {
                 key = ""
                 errorMessage = nil
             } catch {
-                errorMessage = "The key could not be saved to Keychain."
+                errorMessage = "The credential could not be saved to Keychain."
             }
         }
     }
@@ -350,7 +350,7 @@ private struct AlertsSettingsSection: View {
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }
-                Text("Notifications are local macOS alerts. They require notification permission and do not contact OpenRouter.")
+                Text("Notifications are local macOS alerts. They require notification permission and do not contact the provider.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
