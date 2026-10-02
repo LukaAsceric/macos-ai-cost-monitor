@@ -37,6 +37,40 @@ final class CostMonitorModelTests: XCTestCase {
         XCTAssertFalse(logs.text().contains("test-key"))
     }
 
+    @MainActor
+    func test_switchingProviderUsesThatProvidersSecretStore() async throws {
+        let suiteName = "CostMonitorModelTests.provider.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = ReportingPreferences(defaults: defaults)
+        preferences.provider = .primalabs
+
+        let openRouterSecrets = CountingSecretStore(value: "or-key")
+        let primalabsSecrets = CountingSecretStore(value: "pl-key")
+        let model = CostMonitorModel(
+            provider: FakeUsageProvider(items: []),
+            secretStore: InMemorySecretStore(),
+            cache: InMemoryCostCache(),
+            dateProvider: FixedUTCDateProvider(date: "2026-10-02"),
+            preferences: preferences,
+            environmentByProvider: { provider in
+                provider == .primalabs
+                    ? ProviderEnvironment(usage: FakeUsageProvider(items: []), secrets: primalabsSecrets)
+                    : ProviderEnvironment(usage: FakeUsageProvider(items: []), secrets: openRouterSecrets)
+            }
+        )
+
+        _ = await model.refresh()
+
+        XCTAssertEqual(primalabsSecrets.readCount(), 1)
+        XCTAssertEqual(openRouterSecrets.readCount(), 0)
+
+        try await model.saveManagementKey("fresh-token")
+
+        XCTAssertEqual(try primalabsSecrets.read(), "fresh-token")
+        XCTAssertEqual(try openRouterSecrets.read(), "or-key")
+    }
+
     func test_refreshReadsSecretFromKeychainOnlyOncePerModelLifetime() async {
         let secretStore = CountingSecretStore(value: "test-key")
         let item = ActivityItem(

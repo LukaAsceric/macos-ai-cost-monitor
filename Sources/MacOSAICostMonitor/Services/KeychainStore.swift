@@ -17,7 +17,7 @@ public enum KeychainStoreError: Error, Equatable, Sendable {
         case .authenticationRequired:
             return "Keychain authorization is required. Open the signed app bundle once, then try again."
         case .unexpectedStatus:
-            return "The OpenRouter key could not be read from Keychain."
+            return "The saved credential could not be read from Keychain."
         }
     }
 }

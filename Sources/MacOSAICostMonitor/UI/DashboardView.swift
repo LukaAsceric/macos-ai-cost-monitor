@@ -29,7 +29,7 @@ public struct DashboardView: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text("OpenRouter")
+                    Text(preferences.provider.title)
                         .font(.headline)
                 }
                 HStack(spacing: 5) {
@@ -59,7 +59,7 @@ public struct DashboardView: View {
     private var content: some View {
         switch model.state {
         case .notConfigured:
-            emptyState("Add a management key in Settings to begin.", systemImage: "key")
+            emptyState("Add a credential in Settings to begin.", systemImage: "key")
         case .loading(let previous):
             if let previous {
                 costContent(previous, stale: false)

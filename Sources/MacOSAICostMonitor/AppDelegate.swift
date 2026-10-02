@@ -11,11 +11,28 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     public override init() {
         let logStore = AppLogStore()
         self.logStore = logStore
+        // Credentials and usage clients are kept per provider so switching the
+        // provider never overwrites the other provider's saved secret.
+        let environmentByProvider: (ProviderOption) -> ProviderEnvironment = { provider in
+            switch provider {
+            case .primalabs:
+                return ProviderEnvironment(
+                    usage: PrimaLabsClient(diagnosticLogStore: logStore),
+                    secrets: KeychainStore(account: ProviderOption.primalabs.keychainAccount)
+                )
+            default:
+                return ProviderEnvironment(
+                    usage: OpenRouterClient(diagnosticLogStore: logStore),
+                    secrets: KeychainStore(account: ProviderOption.openRouter.keychainAccount)
+                )
+            }
+        }
         self.model = CostMonitorModel(
             provider: OpenRouterClient(diagnosticLogStore: logStore),
             secretStore: KeychainStore(),
             cache: UsageCache(),
-            logStore: logStore
+            logStore: logStore,
+            environmentByProvider: environmentByProvider
         )
         self.updateManager = UpdateManager()
         super.init()
