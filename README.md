@@ -64,6 +64,7 @@ Use the signed `.app` for normal operation. `swift run` can change the developme
 
 - Menu-bar popover with current spend and sparkline
 - OpenRouter and PrimaLabs as usage providers, each with its own credential
+- Optional provider aggregation: sum usage and credits across every configured provider
 - Requests, Sessions, and remaining Credits in the headline
 - Per-model cost breakdown with optional provider grouping
 - Configurable menu-bar time-range list; new installations start with `Today`
@@ -83,6 +84,8 @@ The General page is an operational overview of the current connection, selected 
 ### Provider
 
 OpenRouter and PrimaLabs are supported. Other providers remain visible as disabled catalogue entries for future integrations. Each provider keeps its own credential in the Keychain, so switching providers never overwrites the other provider's saved secret.
+
+Enable **Combine providers** to report every provider with a saved credential as one combined service: spend, credits, and sessions are summed, the headline reads `All providers`, and each provider keeps its own credential card in this page. Providers without a saved credential are skipped, and a provider that cannot be reached is called out in the dialog while the remaining providers still report.
 
 ### Reporting
 

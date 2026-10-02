@@ -108,25 +108,25 @@ public final class StatusBarController: NSObject {
             button.title = value
             let budgetNote = model.budgetExceeded ? ", budget threshold reached" : ""
             let staleNote = stale ? ", stale" : ""
-            button.toolTip = "\(model.preferences.provider.title) cost for \(cost.date) UTC: \(value)\(staleNote)\(budgetNote)"
-            button.setAccessibilityLabel("\(model.preferences.provider.title) cost for \(cost.date) UTC: \(value)\(staleNote)\(budgetNote)")
+            button.toolTip = "\(model.displayProviderTitle) cost for \(cost.date) UTC: \(value)\(staleNote)\(budgetNote)"
+            button.setAccessibilityLabel("\(model.displayProviderTitle) cost for \(cost.date) UTC: \(value)\(staleNote)\(budgetNote)")
         case .loading(let previous):
             button.title = previous.map { CostFormatStyle.headline(displayedUsage(for: $0), maximumFractionDigits: model.preferences.decimalPlaces) } ?? "—"
-            button.toolTip = "Refreshing \(model.preferences.provider.title) usage"
-            button.setAccessibilityLabel("Refreshing \(model.preferences.provider.title) usage")
+            button.toolTip = "Refreshing \(model.displayProviderTitle) usage"
+            button.setAccessibilityLabel("Refreshing \(model.displayProviderTitle) usage")
         case .failed(_, let previous, _):
             button.title = previous.map { CostFormatStyle.headline(displayedUsage(for: $0), maximumFractionDigits: model.preferences.decimalPlaces) } ?? "—"
-            button.toolTip = "\(model.preferences.provider.title) usage is stale or unavailable"
-            button.setAccessibilityLabel("\(model.preferences.provider.title) usage is stale or unavailable")
+            button.toolTip = "\(model.displayProviderTitle) usage is stale or unavailable"
+            button.setAccessibilityLabel("\(model.displayProviderTitle) usage is stale or unavailable")
         case .notConfigured:
             button.title = "—"
-            button.toolTip = "\(model.preferences.provider.title) usage is not configured"
-            button.setAccessibilityLabel("\(model.preferences.provider.title) usage is not configured")
+            button.toolTip = "\(model.displayProviderTitle) usage is not configured"
+            button.setAccessibilityLabel("\(model.displayProviderTitle) usage is not configured")
         case .noData(let date, _, let previous):
             let value = previous.map { CostFormatStyle.headline(displayedUsage(for: $0), maximumFractionDigits: model.preferences.decimalPlaces) } ?? "—"
             button.title = value
-            button.toolTip = "No \(model.preferences.provider.title) activity published for \(date) UTC"
-            button.setAccessibilityLabel("No \(model.preferences.provider.title) activity published for \(date) UTC; showing last known value \(value)")
+            button.toolTip = "No \(model.displayProviderTitle) activity published for \(date) UTC"
+            button.setAccessibilityLabel("No \(model.displayProviderTitle) activity published for \(date) UTC; showing last known value \(value)")
         }
     }
 

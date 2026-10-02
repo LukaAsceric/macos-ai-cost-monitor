@@ -79,6 +79,16 @@ final class ReportingPreferencesTests: XCTestCase {
         XCTAssertEqual(preferences.dialogTimeRanges.count, 1)
     }
 
+    func test_aggregateProvidersDefaultsToOffAndPersists() {
+        let suiteName = "ReportingPreferencesTests.aggregate.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let first = ReportingPreferences(defaults: defaults)
+        XCTAssertFalse(first.aggregateProviders)
+
+        first.aggregateProviders = true
+        XCTAssertTrue(ReportingPreferences(defaults: defaults).aggregateProviders)
+    }
+
     func test_newPreferencesDefaultToTodayAndPersistTheLastSelectedRange() {
         let suiteName = "ReportingPreferencesTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

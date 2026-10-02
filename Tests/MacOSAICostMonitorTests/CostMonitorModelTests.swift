@@ -345,6 +345,138 @@ final class CostMonitorModelTests: XCTestCase {
         XCTAssertFalse(text.contains("secret-value"))
         XCTAssertTrue(text.contains("[REDACTED]"))
     }
+
+    @MainActor
+    func test_aggregatedRefreshSumsAllConfiguredProviders() async throws {
+        let suiteName = "CostMonitorModelTests.aggregate.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = ReportingPreferences(defaults: defaults)
+        preferences.aggregateProviders = true
+
+        let openRouter = FakeUsageProvider(
+            items: [
+                ActivityItem(date: "2026-08-17", model: "openai/gpt-5", providerName: "OpenAI", usage: Decimal(string: "0.010")!, requests: 1, promptTokens: 1, completionTokens: 1)
+            ],
+            credits: OpenRouterCredits(totalCredits: Decimal(string: "100")!, totalUsage: Decimal(string: "40")!),
+            sessionResult: AnalyticsQueryResult(rows: [
+                AnalyticsRow(timestamp: nil, model: "unknown", provider: "OpenRouter", usage: .zero, byokUsage: .zero, requests: 1, promptTokens: 0, completionTokens: 0, sessionID: "s-1")
+            ], truncated: false)
+        )
+        let primalabs = FakeUsageProvider(
+            items: [
+                ActivityItem(date: "2026-08-17", model: "primalabs-ai/MiMo-V2.6-Pro", providerName: "PrimaLabs", usage: Decimal(string: "0.020")!, requests: 2, promptTokens: 2, completionTokens: 2)
+            ],
+            credits: OpenRouterCredits(totalCredits: Decimal(string: "50")!, totalUsage: Decimal(string: "10")!)
+        )
+        let model = CostMonitorModel(
+            provider: openRouter,
+            secretStore: InMemorySecretStore(value: "or-key"),
+            cache: InMemoryCostCache(),
+            dateProvider: FixedUTCDateProvider(date: "2026-08-17"),
+            now: { Date(timeIntervalSince1970: 200) },
+            preferences: preferences,
+            environmentByProvider: { provider in
+                provider == .primalabs
+                    ? ProviderEnvironment(usage: primalabs, secrets: InMemorySecretStore(value: "pl-key"))
+                    : ProviderEnvironment(usage: openRouter, secrets: InMemorySecretStore(value: "or-key"))
+            }
+        )
+
+        await model.refresh()
+
+        let state = model.state
+        guard case .loaded(let cost, _, let stale) = state else {
+            return XCTFail("Expected loaded state, got \(state)")
+        }
+        XCTAssertEqual(cost.usage, Decimal(string: "0.03"))
+        XCTAssertFalse(stale)
+        XCTAssertTrue(model.providerWarnings.isEmpty)
+        XCTAssertEqual(model.remainingCredits, Decimal(string: "100"))
+        XCTAssertEqual(model.sessionCount, 1)
+    }
+
+    @MainActor
+    func test_aggregatedRefreshWarnsAboutFailedProviderButKeepsOthers() async throws {
+        let suiteName = "CostMonitorModelTests.aggregatePartial.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = ReportingPreferences(defaults: defaults)
+        preferences.aggregateProviders = true
+
+        let openRouter = FakeUsageProvider(
+            items: [
+                ActivityItem(date: "2026-08-17", model: "openai/gpt-5", providerName: "OpenAI", usage: Decimal(string: "0.010")!, requests: 1, promptTokens: 1, completionTokens: 1)
+            ],
+            credits: OpenRouterCredits(totalCredits: Decimal(string: "100")!, totalUsage: Decimal(string: "40")!)
+        )
+        let failing = FakeUsageProvider(error: OpenRouterClientError.network)
+        let model = CostMonitorModel(
+            provider: openRouter,
+            secretStore: InMemorySecretStore(value: "or-key"),
+            cache: InMemoryCostCache(),
+            dateProvider: FixedUTCDateProvider(date: "2026-08-17"),
+            now: { Date(timeIntervalSince1970: 200) },
+            preferences: preferences,
+            environmentByProvider: { provider in
+                provider == .primalabs
+                    ? ProviderEnvironment(usage: failing, secrets: InMemorySecretStore(value: "pl-key"))
+                    : ProviderEnvironment(usage: openRouter, secrets: InMemorySecretStore(value: "or-key"))
+            }
+        )
+
+        await model.refresh()
+
+        let state = model.state
+        guard case .loaded(let cost, _, _) = state else {
+            return XCTFail("Expected loaded state, got \(state)")
+        }
+        XCTAssertEqual(cost.usage, Decimal(string: "0.01"))
+        XCTAssertEqual(model.providerWarnings.count, 1)
+        XCTAssertTrue(model.providerWarnings.first?.contains("PrimaLabs") == true)
+    }
+
+    @MainActor
+    func test_aggregatedRefreshSkipsProvidersWithoutCredentials() async throws {
+        let suiteName = "CostMonitorModelTests.aggregateSkip.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = ReportingPreferences(defaults: defaults)
+        preferences.aggregateProviders = true
+
+        let openRouter = FakeUsageProvider(
+            items: [
+                ActivityItem(date: "2026-08-17", model: "openai/gpt-5", providerName: "OpenAI", usage: Decimal(string: "0.010")!, requests: 1, promptTokens: 1, completionTokens: 1)
+            ]
+        )
+        let primalabs = FakeUsageProvider(
+            items: [
+                ActivityItem(date: "2026-08-17", model: "primalabs-ai/MiMo-V2.6-Pro", providerName: "PrimaLabs", usage: Decimal(string: "9.99")!, requests: 5, promptTokens: 5, completionTokens: 5)
+            ]
+        )
+        let model = CostMonitorModel(
+            provider: openRouter,
+            secretStore: InMemorySecretStore(value: "or-key"),
+            cache: InMemoryCostCache(),
+            dateProvider: FixedUTCDateProvider(date: "2026-08-17"),
+            now: { Date(timeIntervalSince1970: 200) },
+            preferences: preferences,
+            environmentByProvider: { provider in
+                provider == .primalabs
+                    ? ProviderEnvironment(usage: primalabs, secrets: InMemorySecretStore())
+                    : ProviderEnvironment(usage: openRouter, secrets: InMemorySecretStore(value: "or-key"))
+            }
+        )
+
+        await model.refresh()
+
+        let state = model.state
+        guard case .loaded(let cost, _, _) = state else {
+            return XCTFail("Expected loaded state, got \(state)")
+        }
+        XCTAssertEqual(cost.usage, Decimal(string: "0.01"))
+        XCTAssertTrue(model.providerWarnings.isEmpty)
+    }
 }
 
 private final class FakeUsageProvider: UsageProvider, @unchecked Sendable {
