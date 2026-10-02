@@ -178,8 +178,6 @@ private struct GeneralSettingsSection: View {
 private struct ProviderSettingsSection: View {
     @ObservedObject var model: CostMonitorModel
     @ObservedObject private var preferences: ReportingPreferences
-    @State private var key = ""
-    @State private var errorMessage: String?
 
     init(model: CostMonitorModel) {
         self.model = model
@@ -215,28 +213,55 @@ private struct ProviderSettingsSection: View {
                 }
             }
 
-            if preferences.provider.isEnabled {
-                SettingsCard(title: preferences.provider.credentialCardTitle) {
-                    Text(preferences.provider.credentialHelp)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                    SecureField(preferences.provider.credentialPlaceholder, text: $key)
-                        .textFieldStyle(.roundedBorder)
-                    HStack {
-                        Button(preferences.provider.credentialSaveTitle) { save() }
-                            .disabled(key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        Button(preferences.provider.credentialDeleteTitle, role: .destructive) {
-                            do { try model.deleteManagementKey() }
-                            catch { errorMessage = "The credential could not be deleted from Keychain." }
-                        }
-                        Spacer()
-                    }
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
+            SettingsCard(title: "Combine providers") {
+                Toggle("Sum usage and credits across all configured providers", isOn: $preferences.aggregateProviders)
+                    .toggleStyle(.switch)
+                Text("Every provider with a saved credential is queried and the results are added up. Providers without a credential are skipped.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            .onChange(of: preferences.aggregateProviders) { _ in
+                model.applyPreferenceChanges()
+            }
+
+            if preferences.aggregateProviders {
+                ForEach(ProviderOption.allCases.filter(\.isEnabled)) { provider in
+                    ProviderCredentialCard(model: model, provider: provider)
                 }
+            } else if preferences.provider.isEnabled {
+                ProviderCredentialCard(model: model, provider: preferences.provider)
+            }
+        }
+    }
+}
+
+@MainActor
+private struct ProviderCredentialCard: View {
+    @ObservedObject var model: CostMonitorModel
+    let provider: ProviderOption
+    @State private var key = ""
+    @State private var errorMessage: String?
+
+    var body: some View {
+        SettingsCard(title: provider.credentialCardTitle) {
+            Text(provider.credentialHelp)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            SecureField(provider.credentialPlaceholder, text: $key)
+                .textFieldStyle(.roundedBorder)
+            HStack {
+                Button(provider.credentialSaveTitle) { save() }
+                    .disabled(key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Button(provider.credentialDeleteTitle, role: .destructive) {
+                    do { try model.deleteManagementKey(for: provider) }
+                    catch { errorMessage = "The credential could not be deleted from Keychain." }
+                }
+                Spacer()
+            }
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
             }
         }
     }
@@ -244,7 +269,7 @@ private struct ProviderSettingsSection: View {
     private func save() {
         Task {
             do {
-                try await model.saveManagementKey(key)
+                try await model.saveManagementKey(key, for: provider)
                 key = ""
                 errorMessage = nil
             } catch {

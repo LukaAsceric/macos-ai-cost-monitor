@@ -377,12 +377,19 @@ public final class ReportingPreferences: ObservableObject {
         static let showFullBreakdown = "showFullBreakdown"
         static let useLocalCalendar = "useLocalCalendar"
         static let groupModelsAcrossProviders = "groupModelsAcrossProviders"
+        static let aggregateProviders = "aggregateProviders"
     }
 
     private let defaults: UserDefaults
 
     @Published public var provider: ProviderOption {
         didSet { defaults.set(provider.rawValue, forKey: Keys.provider) }
+    }
+
+    /// When enabled, usage and credits are summed across every provider that
+    /// has a saved credential instead of reporting the selected provider only.
+    @Published public var aggregateProviders: Bool {
+        didSet { defaults.set(aggregateProviders, forKey: Keys.aggregateProviders) }
     }
 
     @Published public var reportRange: ReportRange {
@@ -485,6 +492,7 @@ public final class ReportingPreferences: ObservableObject {
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         provider = ProviderOption(rawValue: defaults.string(forKey: Keys.provider) ?? "") ?? .openRouter
+        aggregateProviders = defaults.bool(forKey: Keys.aggregateProviders)
         let legacyRange = ReportRange(rawValue: defaults.string(forKey: Keys.reportRange) ?? "")
         let savedTimeRange = ReportTimeRange(rawValue: defaults.string(forKey: Keys.timeRange) ?? "")
         let resolvedTimeRange = savedTimeRange ?? (legacyRange == .last30Days ? .last30CompletedDays : .today)

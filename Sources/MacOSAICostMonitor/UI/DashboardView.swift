@@ -29,7 +29,7 @@ public struct DashboardView: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(preferences.provider.title)
+                    Text(model.displayProviderTitle)
                         .font(.headline)
                 }
                 HStack(spacing: 5) {
@@ -72,6 +72,15 @@ public struct DashboardView: View {
                     Label("Showing the latest cached completed UTC day.", systemImage: "clock.arrow.circlepath")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+                if !model.providerWarnings.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(model.providerWarnings, id: \.self) { warning in
+                            Label(warning, systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                    }
                 }
                 costContent(cost, stale: stale)
             }

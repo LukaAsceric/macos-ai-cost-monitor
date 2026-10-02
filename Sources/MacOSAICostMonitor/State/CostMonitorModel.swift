@@ -104,6 +104,15 @@ public final class CostMonitorModel: ObservableObject {
     @Published public private(set) var lastRefreshSucceeded: Bool? = nil
     @Published public private(set) var remainingCredits: Decimal?
     @Published public private(set) var sessionCount: Int?
+    /// Per-provider problems from the last aggregated refresh (for example one
+    /// provider's expired credential while the others still reported data).
+    @Published public private(set) var providerWarnings: [String] = []
+
+    /// Provider name shown in the menu-bar dialog and tooltips. Aggregation
+    /// reports every configured provider as one combined service.
+    public var displayProviderTitle: String {
+        preferences.aggregateProviders ? "All providers" : preferences.provider.title
+    }
 
     public var currentReportTitle: String {
         preferences.timeRange.reportLabel
@@ -200,6 +209,31 @@ public final class CostMonitorModel: ObservableObject {
         lastUpdated = nil
     }
 
+    /// Saves a credential for one specific provider so aggregation mode can be
+    /// configured without switching the active provider back and forth.
+    public func saveManagementKey(_ key: String, for provider: ProviderOption) async throws {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        try environmentByProvider(provider).secrets.save(trimmed)
+        if provider == preferences.provider {
+            loadedProvider = provider
+            managementKey = trimmed
+            didLoadManagementKey = true
+        }
+    }
+
+    public func deleteManagementKey(for provider: ProviderOption) throws {
+        try environmentByProvider(provider).secrets.delete()
+        if provider == preferences.provider {
+            loadedProvider = provider
+            managementKey = nil
+            didLoadManagementKey = true
+            managementKeyErrorMessage = nil
+            state = .notConfigured
+            lastUpdated = nil
+        }
+    }
+
     public func startPolling(interval: TimeInterval = 300) {
         guard schedulerTask == nil else { return }
         let scheduler = RefreshScheduler()
@@ -228,6 +262,10 @@ public final class CostMonitorModel: ObservableObject {
 
     private func performRefresh() async -> Bool {
         let previous = state.dailyCost
+        if preferences.aggregateProviders {
+            return await performAggregatedRefresh(previous: previous)
+        }
+        providerWarnings = []
         if loadedProvider != preferences.provider {
             // Credentials are stored per provider; switching providers must re-read
             // the other provider's secret instead of reusing the cached one.
@@ -339,6 +377,147 @@ public final class CostMonitorModel: ObservableObject {
             )
             return false
         }
+    }
+
+    private struct ProviderTarget {
+        let provider: ProviderOption
+        let environment: ProviderEnvironment
+        let credential: String
+    }
+
+    /// Aggregation mode: sum usage, credits, and sessions across every provider
+    /// that has a saved credential. Providers without a credential are skipped;
+    /// a provider that fails contributes a warning instead of failing the whole
+    /// refresh, so one expired credential does not blank out the other totals.
+    private func performAggregatedRefresh(previous: DailyCost?) async -> Bool {
+        var targets: [ProviderTarget] = []
+        var warnings: [String] = []
+        for provider in ProviderOption.allCases where provider.isEnabled {
+            let environment = environmentByProvider(provider)
+            do {
+                if let credential = try environment.secrets.read()?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !credential.isEmpty {
+                    targets.append(ProviderTarget(provider: provider, environment: environment, credential: credential))
+                }
+            } catch {
+                warnings.append("\(provider.title): The saved credential could not be read from Keychain.")
+            }
+        }
+
+        if targets.isEmpty {
+            providerWarnings = warnings
+            managementKeyStatus = .missing
+            lastRefreshSucceeded = nil
+            state = .notConfigured
+            return true
+        }
+
+        managementKeyStatus = .configured
+        lastRefreshSucceeded = nil
+        state = .loading(previous: previous)
+        let query = AnalyticsQuery.make(
+            range: preferences.timeRange,
+            now: now(),
+            timeZone: preferences.displayTimeZone,
+            customStart: preferences.customStart,
+            customEnd: preferences.customEnd
+        )
+        logStore.info("Querying \(targets.count) provider(s) in aggregation mode")
+
+        var rows: [AnalyticsRow] = []
+        var succeeded = 0
+        var creditsRemaining = Decimal.zero
+        var creditsAvailable = false
+        var sessions = 0
+        var sessionsAvailable = false
+        for target in targets {
+            do {
+                let result = try await target.environment.usage.queryAnalytics(
+                    query,
+                    apiKey: target.credential,
+                    captureRawResponse: preferences.captureRawHTTPResponses
+                )
+                rows.append(contentsOf: result.rows)
+                succeeded += 1
+            } catch is CancellationError {
+                return false
+            } catch {
+                warnings.append("\(target.provider.title): \(providerErrorMessage(error))")
+            }
+            do {
+                let credits = try await target.environment.usage.credits(
+                    apiKey: target.credential,
+                    captureRawResponse: preferences.captureRawHTTPResponses
+                )
+                creditsRemaining += max(credits.totalCredits - credits.totalUsage, .zero)
+                creditsAvailable = true
+            } catch {
+                logStore.warning("Credits summary unavailable for \(target.provider.title)")
+            }
+            do {
+                let sessionQuery = AnalyticsQuery.sessionCount(
+                    range: preferences.timeRange,
+                    now: now(),
+                    timeZone: preferences.displayTimeZone,
+                    customStart: preferences.customStart,
+                    customEnd: preferences.customEnd
+                )
+                let result = try await target.environment.usage.queryAnalytics(
+                    sessionQuery,
+                    apiKey: target.credential,
+                    captureRawResponse: preferences.captureRawHTTPResponses
+                )
+                sessions += result.sessionCount
+                sessionsAvailable = true
+            } catch {
+                logStore.warning("Session summary unavailable for \(target.provider.title)")
+            }
+        }
+        providerWarnings = warnings
+
+        if succeeded == 0 {
+            let message = warnings.first ?? "The providers could not be reached. Showing the last known value."
+            lastRefreshSucceeded = false
+            logStore.error("Aggregated refresh failed: \(message)")
+            state = .failed(message: message, previous: previous, staleSince: lastUpdated ?? now())
+            return false
+        }
+
+        let reportDate = preferences.timeRange.reportLabel
+        let merged = AnalyticsQueryResult(rows: rows, truncated: false)
+        let cost = merged.dailyCost(label: reportDate)
+        series = merged.series
+        remainingCredits = creditsAvailable ? creditsRemaining : nil
+        sessionCount = sessionsAvailable ? sessions : nil
+        let fetchedAt = now()
+        lastUpdated = fetchedAt
+        evaluateBudget(for: cost)
+        lastRefreshSucceeded = true
+        logStore.info("Received \(rows.count) aggregated analytics rows from \(succeeded) provider(s)")
+
+        if rows.isEmpty {
+            state = .noData(date: reportDate, fetchedAt: fetchedAt, previous: previous)
+            do {
+                try cache.save(CachedUsage(cost: cost, fetchedAt: fetchedAt, hasActivity: false, previousCost: previous))
+            } catch {
+                logStore.warning("Cache write failed for no-data result")
+            }
+            return true
+        }
+
+        state = .loaded(cost, fetchedAt: fetchedAt, stale: false)
+        do {
+            try cache.save(CachedUsage(cost: cost, fetchedAt: fetchedAt, hasActivity: true))
+        } catch {
+            logStore.warning("Cache write failed for live result")
+        }
+        return true
+    }
+
+    private func providerErrorMessage(_ error: Error) -> String {
+        if let error = error as? OpenRouterClientError { return error.userMessage }
+        if let error = error as? PrimaLabsClientError { return error.userMessage }
+        return "The provider could not be reached. Showing the last known value."
     }
 
     private func refreshAccountSummary(apiKey: String) async {
