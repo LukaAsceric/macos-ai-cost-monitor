@@ -79,6 +79,60 @@ final class ReportingPreferencesTests: XCTestCase {
         XCTAssertEqual(preferences.dialogTimeRanges.count, 1)
     }
 
+    func test_minuteLevelRangesAreProviderDependent() {
+        XCTAssertFalse(ReportTimeRange.past15Minutes.isSupported(for: .primalabs))
+        XCTAssertFalse(ReportTimeRange.past30Minutes.isSupported(for: .primalabs))
+        XCTAssertTrue(ReportTimeRange.pastHour.isSupported(for: .primalabs))
+        XCTAssertTrue(ReportTimeRange.today.isSupported(for: .primalabs))
+        XCTAssertTrue(ReportTimeRange.pastYear.isSupported(for: .primalabs))
+        XCTAssertTrue(ReportTimeRange.past15Minutes.isSupported(for: .openRouter))
+    }
+
+    func test_availableTimeRangesFollowTheSelectedProvider() {
+        let suiteName = "ReportingPreferencesTests.ranges.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = ReportingPreferences(defaults: defaults)
+
+        preferences.provider = .openRouter
+        XCTAssertTrue(preferences.availableTimeRanges.contains(.past15Minutes))
+
+        preferences.provider = .primalabs
+        XCTAssertFalse(preferences.availableTimeRanges.contains(.past15Minutes))
+        XCTAssertFalse(preferences.availableTimeRanges.contains(.past30Minutes))
+        XCTAssertTrue(preferences.availableTimeRanges.contains(.pastHour))
+        XCTAssertTrue(preferences.availableTimeRanges.contains(.today))
+    }
+
+    func test_switchingToPrimalabsFallsBackFromMinuteLevelRange() {
+        let suiteName = "ReportingPreferencesTests.fallback.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = ReportingPreferences(defaults: defaults)
+
+        preferences.provider = .openRouter
+        preferences.timeRange = .past30Minutes
+        XCTAssertEqual(preferences.timeRange, .past30Minutes)
+
+        preferences.provider = .primalabs
+        XCTAssertEqual(preferences.timeRange, .latestAvailableDay)
+    }
+
+    func test_aggregationOffersOnlyRangesEveryProviderSupports() {
+        let suiteName = "ReportingPreferencesTests.rangesAggregate.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = ReportingPreferences(defaults: defaults)
+
+        preferences.provider = .openRouter
+        preferences.timeRange = .past15Minutes
+        XCTAssertEqual(preferences.timeRange, .past15Minutes)
+
+        preferences.aggregateProviders = true
+        XCTAssertEqual(preferences.timeRange, .latestAvailableDay)
+        XCTAssertFalse(preferences.availableTimeRanges.contains(.past15Minutes))
+    }
+
     func test_aggregateProvidersDefaultsToOffAndPersists() {
         let suiteName = "ReportingPreferencesTests.aggregate.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

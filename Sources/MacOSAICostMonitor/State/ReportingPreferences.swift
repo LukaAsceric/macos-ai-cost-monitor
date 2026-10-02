@@ -165,7 +165,19 @@ public enum ReportTimeRange: String, CaseIterable, Codable, Sendable, Identifiab
 
     public var menuLabel: String { title }
 
-    public var isSupported: Bool { true }
+    /// Providers bucket usage at different minimum granularities. PrimaLabs
+    /// (see `PrimaLabsClient`) can only request hour or day buckets, so its
+    /// dashboard cannot express minute-level windows. OpenRouter supports the
+    /// full set. A range is offered only while every provider in the report
+    /// can express it.
+    public func isSupported(for provider: ProviderOption) -> Bool {
+        switch provider {
+        case .primalabs:
+            return analyticsGranularity != .minute
+        default:
+            return true
+        }
+    }
 
     public var analyticsGranularity: AnalyticsGranularity {
         switch self {
@@ -383,13 +395,19 @@ public final class ReportingPreferences: ObservableObject {
     private let defaults: UserDefaults
 
     @Published public var provider: ProviderOption {
-        didSet { defaults.set(provider.rawValue, forKey: Keys.provider) }
+        didSet {
+            defaults.set(provider.rawValue, forKey: Keys.provider)
+            revalidateTimeRange()
+        }
     }
 
     /// When enabled, usage and credits are summed across every provider that
     /// has a saved credential instead of reporting the selected provider only.
     @Published public var aggregateProviders: Bool {
-        didSet { defaults.set(aggregateProviders, forKey: Keys.aggregateProviders) }
+        didSet {
+            defaults.set(aggregateProviders, forKey: Keys.aggregateProviders)
+            revalidateTimeRange()
+        }
     }
 
     @Published public var reportRange: ReportRange {
@@ -398,7 +416,7 @@ public final class ReportingPreferences: ObservableObject {
 
     @Published public var timeRange: ReportTimeRange {
         didSet {
-            guard timeRange.isSupported else {
+            guard isTimeRangeSupported(timeRange) else {
                 timeRange = .latestAvailableDay
                 return
             }
@@ -469,6 +487,31 @@ public final class ReportingPreferences: ObservableObject {
     @Published public private(set) var dialogTimeRanges: Set<ReportTimeRange> {
         didSet {
             defaults.set(dialogTimeRanges.map(\.rawValue).sorted(), forKey: Keys.dialogTimeRanges)
+        }
+    }
+
+    /// Providers contributing to the current report: the selected provider,
+    /// or every enabled provider when aggregation is on.
+    private var reportingProviders: [ProviderOption] {
+        aggregateProviders ? ProviderOption.allCases.filter(\.isEnabled) : [provider]
+    }
+
+    /// Whether every provider in the report can deliver the range.
+    public func isTimeRangeSupported(_ range: ReportTimeRange) -> Bool {
+        reportingProviders.allSatisfy { range.isSupported(for: $0) }
+    }
+
+    /// Ranges selectable for the report, the menu-bar dialog, and its
+    /// settings card. Aggregation uses the intersection of the providers.
+    public var availableTimeRanges: [ReportTimeRange] {
+        ReportTimeRange.allCases.filter { isTimeRangeSupported($0) }
+    }
+
+    /// Keeps the selected range valid after the provider selection changes;
+    /// unsupported ranges fall back to the latest available day.
+    private func revalidateTimeRange() {
+        if !isTimeRangeSupported(timeRange) {
+            timeRange = .latestAvailableDay
         }
     }
 
