@@ -34,6 +34,7 @@ public final class UpdateManager: NSObject, ObservableObject {
     @Published public private(set) var status = "Updates are unavailable for this build."
 
     private let updaterController: SPUStandardUpdaterController?
+    private var canCheckObservation: NSKeyValueObservation?
 
     public override convenience init() {
         let bundle = Bundle.main
@@ -80,6 +81,21 @@ public final class UpdateManager: NSObject, ObservableObject {
         }
 
         super.init()
+        if let updaterController {
+            // Sparkle flips `canCheckForUpdates` while an update check runs. The
+            // property is KVO-compliant, so observe it and keep the published state
+            // in sync — otherwise the settings control stays disabled after the
+            // first manual check until the app is relaunched.
+            canCheckObservation = updaterController.updater.observe(
+                \.canCheckForUpdates,
+                options: [.initial, .new]
+            ) { [weak self] updater, _ in
+                let available = updater.canCheckForUpdates
+                Task { @MainActor [weak self] in
+                    self?.canCheckForUpdates = available
+                }
+            }
+        }
         refreshAvailability()
     }
 
