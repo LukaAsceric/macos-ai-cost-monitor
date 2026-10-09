@@ -145,8 +145,14 @@ public struct DashboardView: View {
                 if preferences.aggregateProviders {
                     Text("By provider")
                         .font(.subheadline.weight(.medium))
-                    ForEach(cost.breakdowns.groupedByProvider()) { breakdown in
-                        breakdownRow(title: breakdown.provider, subtitle: nil, usage: breakdown.usage)
+                    ForEach(cost.breakdowns.groupedByService()) { group in
+                        breakdownRow(title: group.service, subtitle: nil, usage: group.usage)
+                        if group.showsUpstreamBreakdown {
+                            ForEach(group.upstreams) { upstream in
+                                breakdownRow(title: upstream.provider, subtitle: nil, usage: upstream.usage)
+                                    .padding(.leading, 12)
+                            }
+                        }
                     }
                     Divider()
                 }

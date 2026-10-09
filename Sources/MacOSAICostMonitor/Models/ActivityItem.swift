@@ -6,6 +6,11 @@ public struct ActivityItem: Codable, Sendable, Equatable {
     public let modelPermaslug: String?
     public let endpointID: String?
     public let providerName: String
+    /// The configured provider service the item was fetched from (for example
+    /// "OpenRouter" or "PrimaLabs"). Not part of the provider payloads — it is
+    /// stamped in when the fetch happens, so it is excluded from coding and
+    /// defaults to an empty string when decoding cached or fixture data.
+    public var service: String = ""
     public let usage: Decimal
     public let byokUsageInference: Decimal?
     public let requests: Int
@@ -19,6 +24,7 @@ public struct ActivityItem: Codable, Sendable, Equatable {
         modelPermaslug: String? = nil,
         endpointID: String? = nil,
         providerName: String,
+        service: String = "",
         usage: Decimal,
         byokUsageInference: Decimal? = nil,
         requests: Int,
@@ -31,6 +37,7 @@ public struct ActivityItem: Codable, Sendable, Equatable {
         self.modelPermaslug = modelPermaslug
         self.endpointID = endpointID
         self.providerName = providerName
+        self.service = service
         self.usage = usage
         self.byokUsageInference = byokUsageInference
         self.requests = requests
