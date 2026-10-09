@@ -185,68 +185,64 @@ private struct ProviderSettingsSection: View {
     }
 
     var body: some View {
-        SettingsSection(title: "Provider", subtitle: "Choose the service used for activity reporting.") {
-            SettingsCard(title: "Provider catalog") {
-                ForEach(ProviderOption.allCases) { provider in
-                    HStack {
-                        Image(systemName: provider == preferences.provider ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(provider == preferences.provider ? Color.accentColor : Color.secondary)
-                        Text(provider.title)
-                        Spacer()
-                        if provider.isEnabled {
-                            Text("Available")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Text("Coming soon")
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .opacity(provider.isEnabled ? 1 : 0.45)
-                    .onTapGesture {
-                        guard provider.isEnabled else { return }
-                        preferences.provider = provider
-                        model.applyPreferenceChanges()
-                    }
-                }
-            }
-
-            SettingsCard(title: "Combine providers") {
-                Toggle("Sum usage and credits across all configured providers", isOn: $preferences.aggregateProviders)
-                    .toggleStyle(.switch)
-                Text("Every provider with a saved credential is queried and the results are added up. Providers without a credential are skipped.")
+        SettingsSection(title: "Provider", subtitle: "Choose the services used for activity reporting.") {
+            SettingsCard(title: "Provider services") {
+                Text("Select one provider to report its usage — or several to combine their usage and credits. A selected provider keeps its credential inline below the row. Providers without a credential are skipped.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
-            }
-            .onChange(of: preferences.aggregateProviders) { _ in
-                model.applyPreferenceChanges()
-            }
-
-            if preferences.aggregateProviders {
-                ForEach(ProviderOption.allCases.filter(\.isEnabled)) { provider in
-                    ProviderCredentialCard(model: model, provider: provider)
+                ForEach(ProviderOption.allCases) { provider in
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: isSelected(provider) ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(isSelected(provider) ? Color.accentColor : Color.secondary)
+                            Text(provider.title)
+                            Spacer()
+                            if provider.isEnabled {
+                                Text("Available")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("Coming soon")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                        .opacity(provider.isEnabled ? 1 : 0.45)
+                        .onTapGesture {
+                            guard provider.isEnabled else { return }
+                            preferences.setProviderEnabled(provider, enabled: !isSelected(provider))
+                            model.applyPreferenceChanges()
+                        }
+                        if provider.isEnabled && isSelected(provider) {
+                            ProviderCredentialFields(model: model, provider: provider)
+                                .padding(.leading, 26)
+                        }
+                    }
+                    if provider != ProviderOption.allCases.last {
+                        Divider()
+                    }
                 }
-            } else if preferences.provider.isEnabled {
-                ProviderCredentialCard(model: model, provider: preferences.provider)
             }
         }
+    }
+
+    private func isSelected(_ provider: ProviderOption) -> Bool {
+        preferences.enabledProviders.contains(provider)
     }
 }
 
 @MainActor
-private struct ProviderCredentialCard: View {
+private struct ProviderCredentialFields: View {
     @ObservedObject var model: CostMonitorModel
     let provider: ProviderOption
     @State private var key = ""
     @State private var errorMessage: String?
 
     var body: some View {
-        SettingsCard(title: provider.credentialCardTitle) {
-            Text(provider.credentialHelp)
-                .font(.callout)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(provider.credentialCardTitle)
+                .font(.caption.weight(.semibold))
             SecureField(provider.credentialPlaceholder, text: $key)
                 .textFieldStyle(.roundedBorder)
             HStack {
@@ -258,6 +254,9 @@ private struct ProviderCredentialCard: View {
                 }
                 Spacer()
             }
+            Text(provider.credentialHelp)
+                .font(.caption)
+                .foregroundStyle(.secondary)
             if let errorMessage {
                 Text(errorMessage)
                     .font(.caption)

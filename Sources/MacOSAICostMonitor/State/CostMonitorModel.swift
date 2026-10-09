@@ -396,7 +396,7 @@ public final class CostMonitorModel: ObservableObject {
     private func performAggregatedRefresh(previous: DailyCost?) async -> Bool {
         var targets: [ProviderTarget] = []
         var warnings: [String] = []
-        for provider in ProviderOption.allCases where provider.isEnabled {
+        for provider in ProviderOption.allCases where preferences.enabledProviders.contains(provider) {
             let environment = environmentByProvider(provider)
             do {
                 if let credential = try environment.secrets.read()?.trimmingCharacters(in: .whitespacesAndNewlines),

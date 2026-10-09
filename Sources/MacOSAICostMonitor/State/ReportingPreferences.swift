@@ -390,14 +390,33 @@ public final class ReportingPreferences: ObservableObject {
         static let useLocalCalendar = "useLocalCalendar"
         static let groupModelsAcrossProviders = "groupModelsAcrossProviders"
         static let aggregateProviders = "aggregateProviders"
+        static let enabledProviders = "enabledProviders"
     }
 
     private let defaults: UserDefaults
+    private var isSyncingSelection = false
+
+    /// The providers included in reporting. At least one provider must stay
+    /// selected. This is the source of truth for the provider selection;
+    /// `provider` and `aggregateProviders` mirror it for the reporting paths that
+    /// distinguish single-provider and combined mode.
+    @Published public var enabledProviders: Set<ProviderOption> {
+        didSet {
+            guard !enabledProviders.isEmpty else {
+                enabledProviders = oldValue
+                return
+            }
+            defaults.set(enabledProviders.map(\.rawValue).sorted(), forKey: Keys.enabledProviders)
+            guard !isSyncingSelection else { return }
+            syncSelectionMirrors()
+        }
+    }
 
     @Published public var provider: ProviderOption {
         didSet {
             defaults.set(provider.rawValue, forKey: Keys.provider)
-            revalidateTimeRange()
+            guard !isSyncingSelection else { return }
+            syncEnabledProvidersFromMirrors()
         }
     }
 
@@ -406,8 +425,47 @@ public final class ReportingPreferences: ObservableObject {
     @Published public var aggregateProviders: Bool {
         didSet {
             defaults.set(aggregateProviders, forKey: Keys.aggregateProviders)
-            revalidateTimeRange()
+            guard !isSyncingSelection else { return }
+            syncEnabledProvidersFromMirrors()
         }
+    }
+
+    /// Adds or removes a provider from the selection. At least one provider must
+    /// stay selected, so removing the last one is ignored.
+    public func setProviderEnabled(_ provider: ProviderOption, enabled: Bool) {
+        var updated = enabledProviders
+        if enabled {
+            updated.insert(provider)
+        } else if updated.count > 1 {
+            updated.remove(provider)
+        }
+        enabledProviders = updated
+    }
+
+    private func syncSelectionMirrors() {
+        isSyncingSelection = true
+        defer { isSyncingSelection = false }
+        let primary = ProviderOption.allCases.first(where: { enabledProviders.contains($0) }) ?? .openRouter
+        if provider != primary {
+            provider = primary
+        }
+        let aggregate = enabledProviders.count > 1
+        if aggregateProviders != aggregate {
+            aggregateProviders = aggregate
+        }
+        revalidateTimeRange()
+    }
+
+    private func syncEnabledProvidersFromMirrors() {
+        isSyncingSelection = true
+        defer { isSyncingSelection = false }
+        let desired: Set<ProviderOption> = aggregateProviders
+            ? Set(ProviderOption.allCases.filter(\.isEnabled))
+            : [provider]
+        if enabledProviders != desired {
+            enabledProviders = desired
+        }
+        revalidateTimeRange()
     }
 
     @Published public var reportRange: ReportRange {
@@ -493,7 +551,7 @@ public final class ReportingPreferences: ObservableObject {
     /// Providers contributing to the current report: the selected provider,
     /// or every enabled provider when aggregation is on.
     private var reportingProviders: [ProviderOption] {
-        aggregateProviders ? ProviderOption.allCases.filter(\.isEnabled) : [provider]
+        ProviderOption.allCases.filter { enabledProviders.contains($0) }
     }
 
     /// Whether every provider in the report can deliver the range.
@@ -534,8 +592,21 @@ public final class ReportingPreferences: ObservableObject {
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        provider = ProviderOption(rawValue: defaults.string(forKey: Keys.provider) ?? "") ?? .openRouter
-        aggregateProviders = defaults.bool(forKey: Keys.aggregateProviders)
+        let savedProvider = ProviderOption(rawValue: defaults.string(forKey: Keys.provider) ?? "") ?? .openRouter
+        provider = savedProvider
+        let savedAggregate = defaults.bool(forKey: Keys.aggregateProviders)
+        aggregateProviders = savedAggregate
+        let savedProviders = (defaults.array(forKey: Keys.enabledProviders) as? [String] ?? [])
+            .compactMap(ProviderOption.init(rawValue:))
+        if savedProviders.isEmpty {
+            // Migration: derive the selection from the legacy single-provider and
+            // aggregation settings when no selection was stored yet.
+            enabledProviders = savedAggregate
+                ? Set(ProviderOption.allCases.filter(\.isEnabled))
+                : [savedProvider]
+        } else {
+            enabledProviders = Set(savedProviders)
+        }
         let legacyRange = ReportRange(rawValue: defaults.string(forKey: Keys.reportRange) ?? "")
         let savedTimeRange = ReportTimeRange(rawValue: defaults.string(forKey: Keys.timeRange) ?? "")
         let resolvedTimeRange = savedTimeRange ?? (legacyRange == .last30Days ? .last30CompletedDays : .today)

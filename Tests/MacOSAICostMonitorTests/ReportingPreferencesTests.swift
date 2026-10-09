@@ -143,6 +143,56 @@ final class ReportingPreferencesTests: XCTestCase {
         XCTAssertTrue(ReportingPreferences(defaults: defaults).aggregateProviders)
     }
 
+    func test_enabledProvidersMigrateFromLegacySelection() {
+        let suiteName = "ReportingPreferencesTests.migrate.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(true, forKey: "aggregateProviders")
+
+        let preferences = ReportingPreferences(defaults: defaults)
+
+        XCTAssertEqual(preferences.enabledProviders, Set(ProviderOption.allCases.filter(\.isEnabled)))
+    }
+
+    func test_enabledProvidersSelectionPersists() {
+        let suiteName = "ReportingPreferencesTests.selection.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = ReportingPreferences(defaults: defaults)
+
+        preferences.setProviderEnabled(.primalabs, enabled: true)
+        XCTAssertEqual(preferences.enabledProviders, [.openRouter, .primalabs])
+
+        let reloaded = ReportingPreferences(defaults: defaults)
+        XCTAssertEqual(reloaded.enabledProviders, [.openRouter, .primalabs])
+    }
+
+    func test_enabledProvidersKeepAtLeastOneProvider() {
+        let suiteName = "ReportingPreferencesTests.minimum.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = ReportingPreferences(defaults: defaults)
+
+        preferences.setProviderEnabled(.openRouter, enabled: false)
+
+        XCTAssertEqual(preferences.enabledProviders, [.openRouter])
+    }
+
+    func test_enabledProvidersMirrorProviderAndAggregation() {
+        let suiteName = "ReportingPreferencesTests.mirror.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = ReportingPreferences(defaults: defaults)
+
+        preferences.setProviderEnabled(.primalabs, enabled: true)
+        XCTAssertTrue(preferences.aggregateProviders)
+        XCTAssertEqual(preferences.provider, .openRouter)
+
+        preferences.setProviderEnabled(.openRouter, enabled: false)
+        XCTAssertFalse(preferences.aggregateProviders)
+        XCTAssertEqual(preferences.provider, .primalabs)
+    }
+
     func test_newPreferencesDefaultToTodayAndPersistTheLastSelectedRange() {
         let suiteName = "ReportingPreferencesTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
