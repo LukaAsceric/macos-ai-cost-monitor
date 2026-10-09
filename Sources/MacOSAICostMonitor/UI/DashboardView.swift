@@ -240,7 +240,7 @@ public struct DashboardView: View {
             Menu {
                 ForEach(ReportTimeRange.Group.allCases) { group in
                     Section(group.title) {
-                        ForEach(ReportTimeRange.options(in: group).filter { preferences.isTimeRangeSupported($0) }) { range in
+                        ForEach(ReportTimeRange.options(in: group).filter { preferences.isTimeRangeSupported($0) && preferences.dialogTimeRanges.contains($0) }) { range in
                             Button {
                                 selectTimeRange(range)
                             } label: {

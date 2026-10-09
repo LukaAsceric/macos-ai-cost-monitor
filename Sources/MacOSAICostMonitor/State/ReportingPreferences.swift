@@ -581,6 +581,13 @@ public final class ReportingPreferences: ObservableObject {
             updated.remove(range)
         }
         dialogTimeRanges = updated
+        // The dialog menu only lists enabled ranges, so the active range must
+        // move along when its entry gets unchecked.
+        if !updated.contains(timeRange) {
+            timeRange = ReportTimeRange.allCases.first { updated.contains($0) && isTimeRangeSupported($0) }
+                ?? ReportTimeRange.allCases.first { updated.contains($0) }
+                ?? .latestAvailableDay
+        }
     }
 
     public var displayTimeZone: TimeZone {
