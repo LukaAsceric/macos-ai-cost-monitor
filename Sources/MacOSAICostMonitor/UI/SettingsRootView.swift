@@ -406,6 +406,9 @@ private struct ReleaseSettingsSection: View {
                     set: { updateManager.setAutomaticUpdates($0) }
                 ))
                 .disabled(!updateManager.canConfigureAutomaticUpdates)
+                Text("The app checks for updates at every launch and downloads updates in the background.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Text(updateManager.status)
                     .font(.callout)
                     .foregroundStyle(.secondary)

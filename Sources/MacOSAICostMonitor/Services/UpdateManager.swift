@@ -68,7 +68,8 @@ public final class UpdateManager: NSObject, ObservableObject {
                 userDriverDelegate: nil
             )
             updaterController = controller
-            automaticUpdates = controller.updater.automaticallyDownloadsUpdates
+            automaticUpdates = controller.updater.automaticallyChecksForUpdates
+                && controller.updater.automaticallyDownloadsUpdates
             canConfigureAutomaticUpdates = controller.updater.allowsAutomaticUpdates
             status = "Signed updates are available."
         } else {
@@ -102,6 +103,13 @@ public final class UpdateManager: NSObject, ObservableObject {
     public func start() {
         guard let updaterController else { return }
         updaterController.startUpdater()
+        // Sparkle's scheduler only fires when the configured interval has elapsed
+        // since the last check. Force a silent background check on every launch
+        // when automatic updates are enabled (the documented SPUUpdater recipe:
+        // call checkForUpdatesInBackground right after starting the updater).
+        if updaterController.updater.automaticallyChecksForUpdates {
+            updaterController.updater.checkForUpdatesInBackground()
+        }
         refreshAvailability()
     }
 
@@ -112,13 +120,13 @@ public final class UpdateManager: NSObject, ObservableObject {
     }
 
     public func setAutomaticUpdates(_ enabled: Bool) {
-        guard let updaterController, updaterController.updater.allowsAutomaticUpdates else { return }
-        guard updaterController.updater.automaticallyChecksForUpdates else {
-            automaticUpdates = false
-            return
-        }
+        guard let updaterController else { return }
+        // The single "Automatic updates" switch owns both Sparkle controls:
+        // checking at launch and downloading updates in the background.
+        updaterController.updater.automaticallyChecksForUpdates = enabled
         updaterController.updater.automaticallyDownloadsUpdates = enabled
-        automaticUpdates = updaterController.updater.automaticallyDownloadsUpdates
+        automaticUpdates = updaterController.updater.automaticallyChecksForUpdates
+            && updaterController.updater.automaticallyDownloadsUpdates
     }
 
     public func refreshAvailability() {

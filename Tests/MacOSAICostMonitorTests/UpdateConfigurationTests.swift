@@ -45,4 +45,21 @@ final class UpdateManagerTests: XCTestCase {
         XCTAssertFalse(manager.canCheckForUpdates)
         XCTAssertFalse(manager.automaticUpdates)
     }
+
+    @MainActor
+    func test_unconfiguredManagerIgnoresAutomaticUpdatesToggleAndStart() {
+        let manager = UpdateManager(
+            bundleURL: URL(fileURLWithPath: "/tmp/.build/debug"),
+            bundleIdentifier: nil,
+            feedURLString: nil,
+            publicKey: nil
+        )
+
+        manager.setAutomaticUpdates(true)
+        XCTAssertFalse(manager.automaticUpdates)
+
+        manager.start()
+        XCTAssertFalse(manager.canCheckForUpdates)
+        XCTAssertFalse(manager.canConfigureAutomaticUpdates)
+    }
 }
