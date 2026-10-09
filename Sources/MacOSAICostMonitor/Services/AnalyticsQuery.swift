@@ -138,6 +138,10 @@ public struct AnalyticsRow: Equatable, Sendable {
     public let timestamp: Date?
     public let model: String
     public let provider: String
+    /// The configured provider service the row was fetched from (for example
+    /// "OpenRouter" or "PrimaLabs"). Rows fetched from a routing service keep the
+    /// routed upstream provider in `provider`.
+    public let service: String
     public let usage: Decimal
     public let byokUsage: Decimal
     public let requests: Int
@@ -149,6 +153,7 @@ public struct AnalyticsRow: Equatable, Sendable {
         timestamp: Date?,
         model: String,
         provider: String,
+        service: String = "",
         usage: Decimal,
         byokUsage: Decimal,
         requests: Int,
@@ -159,6 +164,7 @@ public struct AnalyticsRow: Equatable, Sendable {
         self.timestamp = timestamp
         self.model = model
         self.provider = provider
+        self.service = service
         self.usage = usage
         self.byokUsage = byokUsage
         self.requests = requests
@@ -167,11 +173,27 @@ public struct AnalyticsRow: Equatable, Sendable {
         self.sessionID = sessionID
     }
 
+    public func with(service: String) -> AnalyticsRow {
+        AnalyticsRow(
+            timestamp: timestamp,
+            model: model,
+            provider: provider,
+            service: service,
+            usage: usage,
+            byokUsage: byokUsage,
+            requests: requests,
+            promptTokens: promptTokens,
+            completionTokens: completionTokens,
+            sessionID: sessionID
+        )
+    }
+
     public func asActivityItem() -> ActivityItem {
         ActivityItem(
             date: timestamp.map(UTCCalendar.dayString(from:)) ?? "",
             model: model,
             providerName: provider,
+            service: service,
             usage: usage,
             byokUsageInference: byokUsage,
             requests: requests,

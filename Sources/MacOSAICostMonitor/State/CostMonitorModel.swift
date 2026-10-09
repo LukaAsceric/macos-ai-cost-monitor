@@ -326,8 +326,12 @@ public final class CostMonitorModel: ObservableObject {
             logStore.info("Received \(result.rows.count) analytics rows")
             await refreshAccountSummary(apiKey: key)
             let reportDate = preferences.timeRange.reportLabel
-            let cost = result.dailyCost(label: reportDate)
-            series = result.series
+            let stamped = AnalyticsQueryResult(
+                rows: result.rows.map { $0.with(service: preferences.provider.title) },
+                truncated: result.truncated
+            )
+            let cost = stamped.dailyCost(label: reportDate)
+            series = stamped.series
             if result.truncated {
                 logStore.warning("Analytics result was truncated; totals may be incomplete")
             }
@@ -437,7 +441,7 @@ public final class CostMonitorModel: ObservableObject {
                     apiKey: target.credential,
                     captureRawResponse: preferences.captureRawHTTPResponses
                 )
-                rows.append(contentsOf: result.rows)
+                rows.append(contentsOf: result.rows.map { $0.with(service: target.provider.title) })
                 succeeded += 1
             } catch is CancellationError {
                 return false
