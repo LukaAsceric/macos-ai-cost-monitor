@@ -130,7 +130,7 @@ public struct DashboardView: View {
                 }
             }
             if !model.series.isEmpty {
-                SpendChartView(points: model.series)
+                SpendChartView(points: model.series, timeZone: preferences.displayTimeZone)
                     .frame(height: 72)
             }
             HStack(spacing: 12) {
