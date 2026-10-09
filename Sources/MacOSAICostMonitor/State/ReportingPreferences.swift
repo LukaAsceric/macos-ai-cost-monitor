@@ -550,7 +550,7 @@ public final class ReportingPreferences: ObservableObject {
 
     /// Providers contributing to the current report: the selected provider,
     /// or every enabled provider when aggregation is on.
-    private var reportingProviders: [ProviderOption] {
+    public var reportingProviders: [ProviderOption] {
         ProviderOption.allCases.filter { enabledProviders.contains($0) }
     }
 

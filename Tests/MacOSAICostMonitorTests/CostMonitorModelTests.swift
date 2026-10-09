@@ -394,6 +394,8 @@ final class CostMonitorModelTests: XCTestCase {
         XCTAssertTrue(model.providerWarnings.isEmpty)
         XCTAssertEqual(model.remainingCredits, Decimal(string: "100"))
         XCTAssertEqual(model.sessionCount, 1)
+        XCTAssertEqual(model.providerCredentials[.openRouter], .configured)
+        XCTAssertEqual(model.providerCredentials[.primalabs], .configured)
     }
 
     @MainActor
@@ -476,6 +478,8 @@ final class CostMonitorModelTests: XCTestCase {
         }
         XCTAssertEqual(cost.usage, Decimal(string: "0.01"))
         XCTAssertTrue(model.providerWarnings.isEmpty)
+        XCTAssertEqual(model.providerCredentials[.openRouter], .configured)
+        XCTAssertEqual(model.providerCredentials[.primalabs], .missing)
     }
 }
 
