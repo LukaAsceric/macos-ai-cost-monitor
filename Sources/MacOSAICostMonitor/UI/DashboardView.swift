@@ -221,7 +221,7 @@ public struct DashboardView: View {
             Menu {
                 ForEach(ReportTimeRange.Group.allCases) { group in
                     Section(group.title) {
-                        ForEach(ReportTimeRange.options(in: group).filter(\.isSupported)) { range in
+                        ForEach(ReportTimeRange.options(in: group).filter { preferences.isTimeRangeSupported($0) }) { range in
                             Button {
                                 selectTimeRange(range)
                             } label: {
@@ -250,7 +250,7 @@ public struct DashboardView: View {
     }
 
     private func selectTimeRange(_ range: ReportTimeRange) {
-        guard range.isSupported else { return }
+        guard preferences.isTimeRangeSupported(range) else { return }
         preferences.timeRange = range
         model.applyPreferenceChanges()
     }

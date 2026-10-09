@@ -91,6 +91,8 @@ Enable **Combine providers** to report every provider with a saved credential as
 
 The **Menu-bar dialog ranges** card controls which ranges appear in the popover. The selected report itself is changed from the popover calendar menu. New installations default to `Today`; after the first selection, the last chosen range is restored.
 
+Available ranges are provider-dependent: the PrimaLabs dashboard buckets usage by hour or day, so minute-level ranges (`Past 15 minutes`, `Past 30 minutes`) only appear for OpenRouter. In combined provider mode a range is offered only when every configured provider supports it, and a selection that becomes unsupported falls back to the latest available day.
+
 Calendar ranges use the selected display timezone. Analytics requests use an explicit `time_range` and matching granularity.
 
 ### Alerts

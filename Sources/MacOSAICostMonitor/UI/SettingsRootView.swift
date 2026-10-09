@@ -299,11 +299,18 @@ private struct ReportingSettingsSection: View {
                 Text(group.title)
                     .font(.subheadline.weight(.medium))
                     .padding(.top, 8)
-                ForEach(ReportTimeRange.options(in: group).filter(\.isSupported)) { range in
+                ForEach(ReportTimeRange.options(in: group)) { range in
+                    let supported = preferences.isTimeRangeSupported(range)
                     Toggle(range.menuLabel, isOn: Binding(
                         get: { preferences.dialogTimeRanges.contains(range) },
                         set: { preferences.setDialogTimeRange(range, enabled: $0) }
                     ))
+                    .disabled(!supported)
+                    if !supported {
+                        Text("Not available for the current provider selection.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             if preferences.timeRange == .custom {
