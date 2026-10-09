@@ -161,7 +161,7 @@ public struct DashboardView: View {
                 ForEach(displayedBreakdowns(cost)) { breakdown in
                     breakdownRow(
                         title: breakdown.model,
-                        subtitle: (!preferences.groupModelsAcrossProviders && preferences.showProviderDetails) ? breakdown.provider : nil,
+                        subtitle: modelRowSubtitle(for: breakdown),
                         usage: breakdown.usage
                     )
                 }
@@ -176,6 +176,19 @@ public struct DashboardView: View {
         let list = preferences.showFullBreakdown ? cost.breakdowns : Array(cost.breakdowns.prefix(5))
         guard preferences.groupModelsAcrossProviders else { return list }
         return list.groupedByModel()
+    }
+
+    /// Aggregate rows (providers that report no per-model split) always name
+    /// their source, so the costs stay attributable even without provider
+    /// details. Regular model rows keep the user's provider-detail preference.
+    private func modelRowSubtitle(for breakdown: CostBreakdown) -> String? {
+        if breakdown.model == PrimaLabsClient.aggregateModelName {
+            return breakdown.provider
+        }
+        if !preferences.groupModelsAcrossProviders && preferences.showProviderDetails {
+            return breakdown.provider
+        }
+        return nil
     }
 
     private func breakdownRow(title: String, subtitle: String?, usage: Decimal) -> some View {
