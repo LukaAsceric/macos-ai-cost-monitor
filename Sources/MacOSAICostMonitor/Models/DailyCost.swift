@@ -172,4 +172,39 @@ public extension Array where Element == CostBreakdown {
             return $0.usage > $1.usage
         }
     }
+
+    /// Merges breakdown rows that share the same provider into a single row so an
+    /// aggregated report can show the per-provider split of the total cost. Token
+    /// and request counts are summed; the model field becomes a sorted,
+    /// de-duplicated list of the contributing models.
+    func groupedByProvider() -> [CostBreakdown] {
+        guard !isEmpty else { return [] }
+
+        var merged: [String: CostBreakdown] = [:]
+        for entry in self {
+            if var existing = merged[entry.provider] {
+                var models = existing.model.split(separator: ", ").map(String.init)
+                if !models.contains(entry.model) {
+                    models.append(entry.model)
+                }
+                existing = CostBreakdown(
+                    model: models.sorted().joined(separator: ", "),
+                    provider: entry.provider,
+                    usage: existing.usage + entry.usage,
+                    requests: existing.requests + entry.requests,
+                    promptTokens: existing.promptTokens + entry.promptTokens,
+                    completionTokens: existing.completionTokens + entry.completionTokens,
+                    reasoningTokens: existing.reasoningTokens + entry.reasoningTokens
+                )
+                merged[entry.provider] = existing
+            } else {
+                merged[entry.provider] = entry
+            }
+        }
+
+        return merged.values.sorted {
+            if $0.usage == $1.usage { return $0.id < $1.id }
+            return $0.usage > $1.usage
+        }
+    }
 }
