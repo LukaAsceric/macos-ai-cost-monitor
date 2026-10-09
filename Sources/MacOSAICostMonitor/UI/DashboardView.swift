@@ -142,23 +142,22 @@ public struct DashboardView: View {
             }
             if !cost.breakdowns.isEmpty {
                 Divider()
+                if preferences.aggregateProviders {
+                    Text("By provider")
+                        .font(.subheadline.weight(.medium))
+                    ForEach(cost.breakdowns.groupedByProvider()) { breakdown in
+                        breakdownRow(title: breakdown.provider, subtitle: nil, usage: breakdown.usage)
+                    }
+                    Divider()
+                }
                 Text("By model")
                     .font(.subheadline.weight(.medium))
                 ForEach(displayedBreakdowns(cost)) { breakdown in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(breakdown.model)
-                                .lineLimit(1)
-                            if !preferences.groupModelsAcrossProviders && preferences.showProviderDetails {
-                                Text(breakdown.provider)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        Spacer()
-                        Text(CostFormatStyle.headline(breakdown.usage, maximumFractionDigits: preferences.decimalPlaces))
-                            .font(.caption.monospacedDigit())
-                    }
+                    breakdownRow(
+                        title: breakdown.model,
+                        subtitle: (!preferences.groupModelsAcrossProviders && preferences.showProviderDetails) ? breakdown.provider : nil,
+                        usage: breakdown.usage
+                    )
                 }
             }
             if let lastUpdated = model.lastUpdated {
@@ -171,6 +170,23 @@ public struct DashboardView: View {
         let list = preferences.showFullBreakdown ? cost.breakdowns : Array(cost.breakdowns.prefix(5))
         guard preferences.groupModelsAcrossProviders else { return list }
         return list.groupedByModel()
+    }
+
+    private func breakdownRow(title: String, subtitle: String?, usage: Decimal) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .lineLimit(1)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            Text(CostFormatStyle.headline(usage, maximumFractionDigits: preferences.decimalPlaces))
+                .font(.caption.monospacedDigit())
+        }
     }
 
     private func updatedLabel(_ date: Date) -> some View {

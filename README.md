@@ -66,7 +66,7 @@ Use the signed `.app` for normal operation. `swift run` can change the developme
 - OpenRouter and PrimaLabs as usage providers, each with its own credential
 - Optional provider aggregation: sum usage and credits across every configured provider
 - Requests, Sessions, and remaining Credits in the headline
-- Per-model cost breakdown with optional provider grouping
+- Per-model cost breakdown with optional provider grouping, plus a per-provider cost breakdown in the aggregated view
 - Configurable menu-bar time-range list; new installations start with `Today`
 - The last selected report range is restored between launches
 - Display timezone, refresh interval, decimal precision, and custom ranges

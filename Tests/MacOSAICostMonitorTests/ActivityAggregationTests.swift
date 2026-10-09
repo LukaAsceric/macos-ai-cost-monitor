@@ -94,6 +94,58 @@ final class ActivityAggregationTests: XCTestCase {
         XCTAssertTrue([CostBreakdown]().groupedByModel().isEmpty)
     }
 
+    func test_groupedByProviderMergesSameProviderAcrossModels() {
+        let rows = [
+            CostBreakdown(model: "openai/gpt-5", provider: "OpenRouter", usage: Decimal(string: "0.015")!,
+                          requests: 5, promptTokens: 50, completionTokens: 125, reasoningTokens: 25),
+            CostBreakdown(model: "anthropic/claude-sonnet", provider: "OpenRouter", usage: Decimal(string: "0.003")!,
+                          requests: 2, promptTokens: 20, completionTokens: 40, reasoningTokens: 0),
+            CostBreakdown(model: "xiaomi/mimo-v2.6-pro", provider: "PrimaLabs", usage: Decimal(string: "0.0042")!,
+                          requests: 2, promptTokens: 20, completionTokens: 40, reasoningTokens: 0)
+        ]
+
+        let grouped = rows.groupedByProvider()
+
+        XCTAssertEqual(grouped.count, 2)
+        let openRouter = try? XCTUnwrap(grouped.first(where: { $0.provider == "OpenRouter" }))
+        XCTAssertEqual(openRouter?.usage, Decimal(string: "0.018"))
+        XCTAssertEqual(openRouter?.requests, 7)
+        XCTAssertEqual(openRouter?.promptTokens, 70)
+        XCTAssertEqual(openRouter?.completionTokens, 165)
+        XCTAssertEqual(openRouter?.reasoningTokens, 25)
+        XCTAssertTrue(openRouter?.model.contains("openai/gpt-5") == true)
+        XCTAssertTrue(openRouter?.model.contains("anthropic/claude-sonnet") == true)
+    }
+
+    func test_groupedByProviderSortsByDescendingUsage() {
+        let rows = [
+            CostBreakdown(model: "model-a", provider: "Small", usage: Decimal(string: "0.001")!,
+                          requests: 1, promptTokens: 1, completionTokens: 1, reasoningTokens: 0),
+            CostBreakdown(model: "model-b", provider: "Large", usage: Decimal(string: "0.009")!,
+                          requests: 1, promptTokens: 1, completionTokens: 1, reasoningTokens: 0)
+        ]
+
+        XCTAssertEqual(rows.groupedByProvider().map(\.provider), ["Large", "Small"])
+    }
+
+    func test_groupedByProviderKeepsSingleModelRowsUnchanged() {
+        let rows = [
+            CostBreakdown(model: "openai/gpt-5", provider: "OpenRouter", usage: Decimal(string: "0.015")!,
+                          requests: 5, promptTokens: 50, completionTokens: 125, reasoningTokens: 25)
+        ]
+
+        let grouped = rows.groupedByProvider()
+
+        XCTAssertEqual(grouped.count, 1)
+        XCTAssertEqual(grouped.first?.provider, "OpenRouter")
+        XCTAssertEqual(grouped.first?.model, "openai/gpt-5")
+        XCTAssertEqual(grouped.first?.usage, Decimal(string: "0.015"))
+    }
+
+    func test_groupedByProviderEmptyInputIsEmpty() {
+        XCTAssertTrue([CostBreakdown]().groupedByProvider().isEmpty)
+    }
+
     private func fixtureItems() throws -> [ActivityItem] {
         let url = try XCTUnwrap(Bundle.module.url(forResource: "activity-response", withExtension: "json"))
         let data = try Data(contentsOf: url)
