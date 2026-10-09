@@ -12,6 +12,12 @@ final class PrimaLabsClientTests: XCTestCase {
     func test_usageRequestUsesDashboardEndpointAndMapsDailyRows() async throws {
         TestURLProtocol.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "GET")
+            if request.url?.path == "/api/v1/litellm/logs" {
+                return (
+                    HTTPURLResponse(url: try XCTUnwrap(request.url), statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    Data(#"{"logs":[]}"#.utf8)
+                )
+            }
             XCTAssertEqual(request.url?.path, "/api/v1/litellm/usage")
             let items = URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)?.queryItems ?? []
             let query = Dictionary(uniqueKeysWithValues: items.compactMap { item in item.value.map { (item.name, $0) } })
@@ -53,6 +59,12 @@ final class PrimaLabsClientTests: XCTestCase {
         TestURLProtocol.requestHandler = { request in
             let items = URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)?.queryItems ?? []
             let query = Dictionary(uniqueKeysWithValues: items.compactMap { item in item.value.map { (item.name, $0) } })
+            if request.url?.path == "/api/v1/litellm/logs" {
+                return (
+                    HTTPURLResponse(url: try XCTUnwrap(request.url), statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    Data(#"{"logs":[]}"#.utf8)
+                )
+            }
             XCTAssertEqual(query["grain"], "hour")
             let response = """
             {"grain":"hour","spend":0.25,"daily":[
@@ -81,6 +93,12 @@ final class PrimaLabsClientTests: XCTestCase {
         TestURLProtocol.requestHandler = { request in
             let items = URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)?.queryItems ?? []
             let query = Dictionary(uniqueKeysWithValues: items.compactMap { item in item.value.map { (item.name, $0) } })
+            if request.url?.path == "/api/v1/litellm/logs" {
+                return (
+                    HTTPURLResponse(url: try XCTUnwrap(request.url), statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    Data(#"{"logs":[]}"#.utf8)
+                )
+            }
             XCTAssertEqual(query["grain"], "hour")
             return (
                 HTTPURLResponse(url: try XCTUnwrap(request.url), statusCode: 200, httpVersion: nil, headerFields: nil)!,
@@ -174,6 +192,85 @@ final class PrimaLabsClientTests: XCTestCase {
         let text = logs.text()
         XCTAssertTrue(text.contains("RAW HTTP RESPONSE BODY"))
         XCTAssertFalse(text.contains("super-secret-token"))
+    }
+
+
+    func test_modelDimensionAttributesRowsPerModelFromLogs() async throws {
+        TestURLProtocol.requestHandler = { request in
+            let body: String
+            if request.url?.path == "/api/v1/litellm/logs" {
+                body = #"{"logs": [{"created_at": "2026-10-02T10:15:00Z", "model": "primalabs-ai/MiMo-V2.6-Pro", "spend": "0.7", "prompt_tokens": 10, "completion_tokens": 20}, {"created_at": "2026-10-02T12:30:00Z", "model": "primalabs-ai/MiMo-V2.6", "cost": "0.3", "prompt_tokens": 5, "completion_tokens": 5}]}"#
+            } else {
+                body = #"{"grain": "day", "spend": 1.0, "daily": [{"date": "2026-10-02", "spend": 1.0, "api_requests": 3, "prompt_tokens": 15, "completion_tokens": 25}]}"#
+            }
+            return (
+                HTTPURLResponse(url: try XCTUnwrap(request.url), statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                Data(body.utf8)
+            )
+        }
+
+        let query = makeQuery(granularity: .day, timeZoneIdentifier: "Europe/Berlin")
+        let client = PrimaLabsClient(session: makeTestSession())
+        let result = try await client.queryAnalytics(query, apiKey: "test-token", captureRawResponse: false)
+
+        XCTAssertEqual(result.rows.map(\.model), ["primalabs-ai/MiMo-V2.6", "primalabs-ai/MiMo-V2.6-Pro"])
+        XCTAssertEqual(result.rows.map(\.usage), [Decimal(string: "0.3"), Decimal(string: "0.7")])
+        XCTAssertEqual(result.rows.reduce(Decimal.zero) { $0 + $1.usage }, Decimal(string: "1"))
+        XCTAssertEqual(result.series.count, 1)
+        XCTAssertEqual(result.series.first?.usage, Decimal(string: "1"))
+    }
+
+    func test_logsWithDisagreeingTotalFallBackToAggregateRows() async throws {
+        TestURLProtocol.requestHandler = { request in
+            let body: String
+            if request.url?.path == "/api/v1/litellm/logs" {
+                body = #"{"logs": [{"created_at": "2026-10-02T10:15:00Z", "model": "primalabs-ai/MiMo-V2.6-Pro", "spend": "0.4"}]}"#
+            } else {
+                body = #"{"grain": "day", "spend": 1.0, "daily": [{"date": "2026-10-02", "spend": 1.0, "api_requests": 1, "prompt_tokens": 1, "completion_tokens": 1}]}"#
+            }
+            return (
+                HTTPURLResponse(url: try XCTUnwrap(request.url), statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                Data(body.utf8)
+            )
+        }
+
+        let query = makeQuery(granularity: .day, timeZoneIdentifier: "Europe/Berlin")
+        let client = PrimaLabsClient(session: makeTestSession())
+        let result = try await client.queryAnalytics(query, apiKey: "test-token", captureRawResponse: false)
+
+        XCTAssertEqual(result.rows.count, 1)
+        XCTAssertEqual(result.rows[0].model, PrimaLabsClient.aggregateModelName)
+        XCTAssertEqual(result.rows[0].usage, Decimal(string: "1"))
+    }
+
+    func test_logPaginationAggregatesAllPages() async throws {
+        TestURLProtocol.requestHandler = { request in
+            let items = URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)?.queryItems ?? []
+            let query = Dictionary(uniqueKeysWithValues: items.compactMap { item in item.value.map { (item.name, $0) } })
+            let body: String
+            if request.url?.path == "/api/v1/litellm/logs" {
+                let offset = Int(query["offset"] ?? "0") ?? 0
+                let count = offset == 0 ? 100 : 2
+                let entries = (0..<count).map { index in
+                    "{\"created_at\":\"2026-10-02T10:15:00Z\",\"model\":\"m\(index % 2)\",\"spend\":0.5}"
+                }.joined(separator: ",")
+                body = "{\"logs\":[\(entries)]}"
+            } else {
+                body = #"{"grain": "day", "spend": 51.0, "daily": [{"date": "2026-10-02", "spend": 51.0, "api_requests": 102, "prompt_tokens": 1, "completion_tokens": 1}]}"#
+            }
+            return (
+                HTTPURLResponse(url: try XCTUnwrap(request.url), statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                Data(body.utf8)
+            )
+        }
+
+        let query = makeQuery(granularity: .day, timeZoneIdentifier: "Europe/Berlin")
+        let client = PrimaLabsClient(session: makeTestSession())
+        let result = try await client.queryAnalytics(query, apiKey: "test-token", captureRawResponse: false)
+
+        XCTAssertEqual(result.rows.map(\.model), ["m0", "m1"])
+        XCTAssertEqual(result.rows.reduce(Decimal.zero) { $0 + $1.usage }, Decimal(string: "51"))
+        XCTAssertEqual(result.rows.reduce(0) { $0 + $1.requests }, 102)
     }
 
     private func makeQuery(granularity: AnalyticsGranularity, timeZoneIdentifier: String) -> AnalyticsQuery {

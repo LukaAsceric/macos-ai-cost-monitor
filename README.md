@@ -127,10 +127,13 @@ PrimaLabs serves models over an OpenAI-compatible inference API (`https://api.pr
 
 ```text
 GET https://dashboard.primalabs.ai/api/v1/litellm/usage?start=…&end=…&tz=…&grain=…
+GET https://dashboard.primalabs.ai/api/v1/litellm/logs?start=…&end=…&limit=…&offset=…
 GET https://dashboard.primalabs.ai/api/v1/billing/wallet
 ```
 
 The credential is the dashboard session token (`Authorization: Bearer …`) copied from an authorized request in the dashboard — for example via the browser's developer tools. The token expires; when the dashboard rejects it, save a fresh one. Usage buckets map directly onto spend, request, and token counts in the report, and the prepaid wallet supplies the remaining Credits headline. PrimaLabs has no session concept, so the Sessions count stays empty for this provider.
+
+The usage endpoint reports no model dimension. For the per-model breakdown the monitor reads the per-request logs (`litellm/logs`) and verifies their spend total against the authoritative usage sum before showing the split; when the logs are unavailable or disagree, the report keeps the aggregate `All models` row instead of guessing.
 
 ## Updates
 
