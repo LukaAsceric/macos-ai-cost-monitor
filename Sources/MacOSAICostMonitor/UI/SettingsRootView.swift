@@ -112,9 +112,16 @@ private struct GeneralSettingsSection: View {
                 Spacer()
             }
             Divider()
-            LabeledContent("Provider", value: model.preferences.provider.title)
-            LabeledContent("Management key", value: model.managementKeyStatus.title)
+            LabeledContent("Providers", value: selectedProvidersSummary)
+            ForEach(model.preferences.reportingProviders) { provider in
+                LabeledContent(provider.title, value: (model.providerCredentials[provider] ?? .unknown).title)
+            }
         }
+    }
+
+    private var selectedProvidersSummary: String {
+        let names = model.preferences.reportingProviders.map(\.title)
+        return names.isEmpty ? "None selected" : names.joined(separator: ", ")
     }
 
     private var reportCard: some View {

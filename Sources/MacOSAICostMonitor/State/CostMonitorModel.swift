@@ -100,13 +100,23 @@ public struct SystemUTCDateProvider: UTCDateProviding {
 public final class CostMonitorModel: ObservableObject {
     @Published public private(set) var state: MonitorState = .notConfigured
     @Published public private(set) var lastUpdated: Date?
-    @Published public private(set) var managementKeyStatus: ManagementKeyStatus = .unknown
+    @Published public private(set) var managementKeyStatus: ManagementKeyStatus = .unknown {
+        didSet {
+            if !preferences.aggregateProviders {
+                providerCredentials = [preferences.provider: managementKeyStatus]
+            }
+        }
+    }
     @Published public private(set) var lastRefreshSucceeded: Bool? = nil
     @Published public private(set) var remainingCredits: Decimal?
     @Published public private(set) var sessionCount: Int?
     /// Per-provider problems from the last aggregated refresh (for example one
     /// provider's expired credential while the others still reported data).
     @Published public private(set) var providerWarnings: [String] = []
+
+    /// Credential state per selected provider, updated on every refresh so
+    /// the Overview can show which providers are ready and which are not.
+    @Published public private(set) var providerCredentials: [ProviderOption: ManagementKeyStatus] = [:]
 
     /// Provider name shown in the menu-bar dialog and tooltips. Aggregation
     /// reports every configured provider as one combined service.
@@ -396,17 +406,23 @@ public final class CostMonitorModel: ObservableObject {
     private func performAggregatedRefresh(previous: DailyCost?) async -> Bool {
         var targets: [ProviderTarget] = []
         var warnings: [String] = []
+        var credentialStates: [ProviderOption: ManagementKeyStatus] = [:]
         for provider in ProviderOption.allCases where preferences.enabledProviders.contains(provider) {
             let environment = environmentByProvider(provider)
             do {
                 if let credential = try environment.secrets.read()?.trimmingCharacters(in: .whitespacesAndNewlines),
                    !credential.isEmpty {
                     targets.append(ProviderTarget(provider: provider, environment: environment, credential: credential))
+                    credentialStates[provider] = .configured
+                } else {
+                    credentialStates[provider] = .missing
                 }
             } catch {
+                credentialStates[provider] = .unavailable
                 warnings.append("\(provider.title): The saved credential could not be read from Keychain.")
             }
         }
+        providerCredentials = credentialStates
 
         if targets.isEmpty {
             providerWarnings = warnings
