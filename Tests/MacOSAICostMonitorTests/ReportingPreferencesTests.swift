@@ -193,6 +193,27 @@ final class ReportingPreferencesTests: XCTestCase {
         XCTAssertEqual(preferences.provider, .primalabs)
     }
 
+    func test_setDialogTimeRangeMovesActiveRangeAndKeepsOneEntry() {
+        let suiteName = "ReportingPreferencesTests.dialogRanges.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = ReportingPreferences(defaults: defaults)
+        preferences.timeRange = .today
+        XCTAssertEqual(preferences.dialogTimeRanges, Set(ReportTimeRange.allCases))
+
+        preferences.setDialogTimeRange(.today, enabled: false)
+
+        XCTAssertFalse(preferences.dialogTimeRanges.contains(.today))
+        XCTAssertNotEqual(preferences.timeRange, .today)
+        XCTAssertTrue(preferences.dialogTimeRanges.contains(preferences.timeRange))
+
+        for range in preferences.dialogTimeRanges where preferences.dialogTimeRanges.count > 1 {
+            preferences.setDialogTimeRange(range, enabled: false)
+        }
+        XCTAssertEqual(preferences.dialogTimeRanges.count, 1)
+        XCTAssertTrue(preferences.dialogTimeRanges.contains(preferences.timeRange))
+    }
+
     func test_newPreferencesDefaultToTodayAndPersistTheLastSelectedRange() {
         let suiteName = "ReportingPreferencesTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

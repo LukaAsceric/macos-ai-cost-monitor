@@ -309,7 +309,13 @@ private struct ReportingSettingsSection: View {
                     let supported = preferences.isTimeRangeSupported(range)
                     Toggle(range.menuLabel, isOn: Binding(
                         get: { preferences.dialogTimeRanges.contains(range) },
-                        set: { preferences.setDialogTimeRange(range, enabled: $0) }
+                        set: { enabled in
+                            let previous = preferences.timeRange
+                            preferences.setDialogTimeRange(range, enabled: enabled)
+                            if preferences.timeRange != previous {
+                                model.applyPreferenceChanges()
+                            }
+                        }
                     ))
                     .disabled(!supported)
                     if !supported {
